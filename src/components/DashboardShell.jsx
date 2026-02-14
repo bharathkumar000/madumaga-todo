@@ -1,0 +1,444 @@
+// src/components/DashboardShell.jsx
+import React, { useState, useEffect, useRef } from 'react';
+import TaskBoard from './TaskBoard';
+import CalendarGrid from './CalendarGrid';
+import ProjectsView from './ProjectsView';
+import ProjectDetailView from './ProjectDetailView';
+import TasksView from './TasksView';
+import TaskWaitingList from './TaskWaitingList';
+import {
+    DndContext,
+    DragOverlay,
+    closestCorners,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    defaultDropAnimationSideEffects
+} from '@dnd-kit/core';
+import { ChevronLeft, Target, Calendar, CheckCircle2, PlayCircle, Clock, Trash2, Folder } from 'lucide-react';
+import { arrayMove } from '@dnd-kit/sortable';
+import { isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth, isAfter } from 'date-fns';
+
+// INITIAL_TASKS moved to App.jsx
+
+const dropAnimation = {
+    duration: 200,
+    easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+    sideEffects: defaultDropAnimationSideEffects({
+        styles: {
+            active: {
+                opacity: '0.4',
+            },
+        },
+    }),
+};
+
+const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, selectedMemberId, onClearMemberFilter, allUsers }) => {
+    // const [tasks, setTasks] = useState(INITIAL_TASKS); // Moved to App.jsx
+    const [activeTask, setActiveTask] = useState(null);
+    const [activeProject, setActiveProject] = useState(null);
+
+    // Resizing State for Right Sidebar
+    const [rightSidebarWidth, setRightSidebarWidth] = useState(320); // Default w-80
+    const [isResizing, setIsResizing] = useState(false);
+    const sidebarRef = useRef(null);
+
+    const startResizing = (e) => {
+        e.preventDefault(); // Prevent text selection
+        setIsResizing(true);
+    };
+
+    const stopResizing = () => {
+        setIsResizing(false);
+    };
+
+    const resize = (mouseMoveEvent) => {
+        if (isResizing) {
+            // Calculate new width: Window Width - Mouse X
+            // Note: This logic assumes sidebar is stuck to the right
+            const startX = mouseMoveEvent.clientX;
+            const newWidth = window.innerWidth - startX;
+
+            if (newWidth > 200 && newWidth < 600) { // Min 200px, Max 600px
+                setRightSidebarWidth(newWidth);
+            }
+        }
+    };
+
+    useEffect(() => {
+        window.addEventListener("mousemove", resize);
+        window.addEventListener("mouseup", stopResizing);
+        return () => {
+            window.removeEventListener("mousemove", resize);
+            window.removeEventListener("mouseup", stopResizing);
+        };
+    }, [isResizing]);
+
+    const [selectedProjectId, setSelectedProjectId] = useState(null);
+
+    // Reset project selection when view changes to anything other than projects
+    useEffect(() => {
+        if (currentView !== 'projects') {
+            setSelectedProjectId(null);
+        }
+    }, [currentView]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5, // Lower for faster pickup
+            },
+        })
+    );
+
+    const handleDragStart = (event) => {
+        const { active } = event;
+        if (active.data.current?.type === 'Task') {
+            const task = tasks.find(t => t.id === active.id);
+            setActiveTask(task);
+            setActiveProject(null);
+        } else if (active.data.current?.type === 'Project') {
+            const project = projects.find(p => p.id === active.id);
+            setActiveProject(project);
+            setActiveTask(null);
+        }
+    };
+
+    const handleDragOver = (event) => {
+        const { active, over } = event;
+        if (!over) return;
+
+        const activeId = active.id;
+        const overId = over.id;
+
+        if (activeId === overId) return;
+
+        const isActiveTask = active.data.current?.type === 'Task';
+        const isOverTask = over.data.current?.type === 'Task';
+        const isActiveProject = active.data.current?.type === 'Project';
+        const isOverProject = over.data.current?.type === 'Project';
+
+        // Project Reordering
+        if (isActiveProject && isOverProject) {
+            setProjects((items) => {
+                const oldIndex = items.findIndex((i) => i.id === activeId);
+                const newIndex = items.findIndex((i) => i.id === overId);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+            return;
+        }
+
+        if (!isActiveTask) return;
+
+        // Moving Task over Task (reorder only, no Firestore write needed for order)
+        if (isActiveTask && isOverTask) {
+            if (currentView === 'calendar') return;
+            // We no longer setTasks here. Status changes happen in handleDragEnd.
+        }
+
+        // Moving Task over Column - defer to handleDragEnd
+        // No local state mutation here.
+    };
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+
+        if (over && over.id.toString().includes('T')) {
+            // It's likely a calendar slot (ISO string includes 'T')
+            // Format: "2023-10-27T10:00:00.000Z-14" (Day-Hour)
+            try {
+                const idString = over.id.toString();
+                const lastHyphenIndex = idString.lastIndexOf('-');
+                const dayIso = idString.substring(0, lastHyphenIndex);
+                const hourStr = idString.substring(lastHyphenIndex + 1);
+
+                const hour = parseInt(hourStr);
+                const date = new Date(dayIso);
+
+                const newDateTime = new Date(date);
+                newDateTime.setHours(hour);
+
+                const taskDateString = newDateTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                const taskTimeString = newDateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+                // Determine Status based on Date
+                let newStatus = 'UPCOMING';
+                const today = startOfDay(new Date());
+                const taskDate = startOfDay(newDateTime);
+
+                if (isBefore(taskDate, today)) {
+                    newStatus = 'DELAYED';
+                } else if (isSameDay(taskDate, today)) {
+                    newStatus = 'TODAY';
+                } else if (isBefore(taskDate, endOfWeek(today, { weekStartsOn: 1 }))) {
+                    newStatus = 'THIS_WEEK';
+                } else if (isBefore(taskDate, endOfMonth(today))) {
+                    newStatus = 'THIS_MONTH';
+                } else {
+                    newStatus = 'UPCOMING';
+                }
+
+                const updates = {
+                    status: newStatus,
+                    date: taskDateString,
+                    time: taskTimeString,
+                    rawDate: newDateTime.toISOString()
+                };
+
+                // Optimistic: update UI instantly
+                setTasks(prev => prev.map(t =>
+                    t.id === active.id ? { ...t, ...updates } : t
+                ));
+                // Then sync to Firestore in background
+                onUpdateTask(active.id, updates);
+
+            } catch (e) {
+                console.error("Failed to parse calendar drop", e);
+            }
+        } else if (over) {
+            // Dropped on a column or task in a column
+            const overId = over.id;
+            const validContainers = ['WAITING', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
+
+            let targetStatus = overId;
+            if (!validContainers.includes(overId)) {
+                const overTask = tasks.find(t => t.id === overId);
+                if (overTask) targetStatus = overTask.status;
+            }
+
+            if (validContainers.includes(targetStatus)) {
+                const updates = { status: targetStatus };
+                const today = new Date();
+
+                if (targetStatus === 'TODAY') {
+                    updates.date = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                    updates.time = '10:00 AM';
+                    updates.rawDate = today.toISOString();
+                } else if (targetStatus === 'THIS_WEEK') {
+                    const nextDay = new Date(today);
+                    nextDay.setDate(today.getDate() + 1);
+                    updates.date = nextDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                    updates.time = '11:00 AM';
+                    updates.rawDate = nextDay.toISOString();
+                } else if (targetStatus === 'WAITING' || targetStatus === 'NO_DUE_DATE') {
+                    updates.date = '';
+                    updates.time = '';
+                    updates.rawDate = '';
+                } else if (targetStatus === 'DELAYED') {
+                    const task = tasks.find(t => t.id === active.id);
+                    if (!task?.date) {
+                        const yesterday = new Date(today);
+                        yesterday.setDate(today.getDate() - 1);
+                        updates.date = yesterday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                        updates.rawDate = yesterday.toISOString();
+                    }
+                }
+
+                // Optimistic: update UI instantly
+                setTasks(prev => prev.map(t =>
+                    t.id === active.id ? { ...t, ...updates } : t
+                ));
+                // Then sync to Firestore in background
+                onUpdateTask(active.id, updates);
+            }
+        }
+
+        setActiveTask(null);
+        setActiveProject(null);
+    };
+
+
+
+    const waitingTasks = tasks.filter(t => t.status === 'WAITING' || t.status === 'todo' || (!t.date && !t.status));
+    const boardTasks = tasks.filter(t => t.status !== 'WAITING' && t.status !== 'todo' && (t.date || t.status));
+
+    return (
+        <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            collisionDetection={closestCorners}
+        >
+            <div className="flex flex-1 h-full w-full">
+                {/* Center Column: Board or Calendar */}
+                <div className="flex-1 bg-background overflow-hidden w-full flex flex-col">
+                    {currentView === 'calendar' ? (
+                        <CalendarGrid
+                            tasks={boardTasks}
+                            events={events}
+                            onToggleTask={onToggleTask}
+                            onDeleteTask={onDeleteTask}
+                            onUpdateTask={onUpdateTask}
+                        />
+                    ) : currentView === 'projects' ? (
+                        selectedProjectId ? (
+                            <ProjectDetailView
+                                project={projects.find(p => p.id === selectedProjectId)}
+                                tasks={tasks}
+                                onBack={() => setSelectedProjectId(null)}
+                                onToggleTask={onToggleTask}
+                            />
+                        ) : (
+                            <ProjectsView
+                                projects={projects}
+                                onAddProject={onAddProject}
+                                onProjectClick={(id) => setSelectedProjectId(id)}
+                                onDeleteProject={onDeleteProject}
+                            />
+                        )
+                    ) : currentView === 'tasks' ? (
+                        <TasksView tasks={tasks} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onDuplicateTask={onDuplicateTask} onEditTask={onEditTask} selectedMemberId={selectedMemberId} onClearMemberFilter={onClearMemberFilter} allUsers={allUsers} />
+                    ) : (
+                        <TaskBoard
+                            tasks={boardTasks}
+                            onToggleTask={onToggleTask}
+                            onDeleteTask={onDeleteTask}
+                        />
+                    )}
+                </div>
+
+                {/* Right Sidebar: Waiting List */}
+                <aside
+                    ref={sidebarRef}
+                    className="flex-shrink-0 bg-gray-900 border-l border-gray-800 flex flex-col h-full bg-card/10 backdrop-blur-sm relative"
+                    style={{ width: rightSidebarWidth, transition: isResizing ? 'none' : 'width 0.2s ease' }}
+                >
+                    {/* Resize Handle */}
+                    <div
+                        onMouseDown={startResizing}
+                        className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-50 group hover:shadow-[0_0_10px_rgba(79,70,229,0.5)]"
+                    >
+                        <div className="absolute top-0 left-[-2px] w-4 h-full opacity-0 group-hover:opacity-100" />
+                    </div>
+
+                    <TaskWaitingList
+                        tasks={waitingTasks}
+                        onAddTask={onAddTask}
+                        onToggleTask={onToggleTask}
+                        onDeleteTask={onDeleteTask}
+                        onDuplicateTask={onDuplicateTask}
+                        onEditTask={onEditTask}
+                    />
+                </aside>
+            </div>
+            <DragOverlay dropAnimation={dropAnimation}>
+                {activeTask ? (
+                    <div className="w-[240px] pointer-events-none">
+                        <div
+                            className={`relative px-2 py-1.5 rounded-xl border border-white/10 shadow-2xl overflow-hidden bg-[#16191D] scale-105`}
+                            style={{
+                                backgroundImage: `linear-gradient(135deg, ${activeTask.color?.includes('blue') ? 'rgba(59, 130, 246, 0.25)' :
+                                    activeTask.color?.includes('emerald') || activeTask.color?.includes('green') ? 'rgba(16, 185, 129, 0.25)' :
+                                        activeTask.color?.includes('amber') || activeTask.color?.includes('yellow') ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.05)'} 0%, rgba(22,25,29,0) 80%)`
+                            }}
+                        >
+                            {/* Ambient Glows scaled down */}
+                            <div
+                                className="absolute -top-10 -left-10 w-[120px] h-[120px] blur-[45px] rounded-full opacity-60"
+                                style={{
+                                    backgroundColor: activeTask.color?.includes('blue') ? '#3B82F6' :
+                                        activeTask.color?.includes('emerald') || activeTask.color?.includes('green') ? '#10B981' :
+                                            activeTask.color?.includes('amber') || activeTask.color?.includes('yellow') ? '#F59E0B' : '#8AB4F8'
+                                }}
+                            ></div>
+
+                            <div className="relative z-10 p-1.5">
+                                <div className="flex justify-between items-start gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-[12px] font-black tracking-tight leading-tight uppercase text-white mb-1 truncate">
+                                            {activeTask.title}
+                                        </h3>
+                                        <div className="flex flex-col gap-0.5 mt-1">
+                                            <div className="text-[7px] font-black text-white/90 uppercase tracking-widest leading-none">
+                                                {activeTask.time ? `${activeTask.time} — ${(() => {
+                                                    const match = activeTask.time.match(/(\d+):(\d+)\s?(AM|PM)/i);
+                                                    if (!match) return '';
+                                                    let h = parseInt(match[1]);
+                                                    const m = parseInt(match[2]);
+                                                    const ampm = match[3].toUpperCase();
+                                                    if (ampm === 'PM' && h < 12) h += 12;
+                                                    if (ampm === 'AM' && h === 12) h = 0;
+                                                    const d = new Date();
+                                                    d.setHours(h, m + (activeTask.duration || 60));
+                                                    // Note: format is available in DashboardShell or I can just use a simple template
+                                                    const nh = d.getHours();
+                                                    const nm = d.getMinutes();
+                                                    const nampm = nh >= 12 ? 'PM' : 'AM';
+                                                    return `${nh % 12 || 12}:${nm.toString().padStart(2, '0')} ${nampm}`;
+                                                })()}` : 'No Time'}
+                                            </div>
+                                            {activeTask.time && (
+                                                <div className="text-[7px] font-black text-white/40 uppercase tracking-widest leading-none">
+                                                    {(activeTask.duration || 60) >= 60 ? `${Math.floor((activeTask.duration || 60) / 60)}h ${(activeTask.duration || 60) % 60}m` : `${activeTask.duration || 60}m`}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                                        {activeTask.priority && (
+                                            <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border 
+                                                ${activeTask.priority === 'High' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
+                                                    activeTask.priority === 'Mid' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                        'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                {activeTask.priority}
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-1">
+                                            <div className="p-1 rounded-md bg-white/5 border border-white/5 text-gray-600">
+                                                <Calendar size={10} strokeWidth={3} />
+                                            </div>
+                                            <div className="p-1 rounded-md bg-white/5 border border-white/5 text-gray-600">
+                                                <Calendar size={10} strokeWidth={3} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 mt-2">
+                                    <div
+                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-white/20"
+                                        style={{
+                                            background:
+                                                activeTask.color === 'blue' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' :
+                                                    activeTask.color === 'green' ? 'linear-gradient(135deg, #10B981, #059669)' :
+                                                        activeTask.color === 'amber' ? 'linear-gradient(135deg, #F59E0B, #D97706)' :
+                                                            activeTask.color === 'rose' ? 'linear-gradient(135deg, #F43F5E, #E11D48)' :
+                                                                activeTask.color === 'indigo' ? 'linear-gradient(135deg, #6366F1, #4F46E5)' :
+                                                                    'linear-gradient(135deg, #3B82F6, #1D4ED8)'
+                                        }}
+                                    >
+                                        {activeTask.creatorInitial || 'B'}
+                                    </div>
+                                    <span className="text-[8px] font-black px-1 py-0.5 rounded-md uppercase tracking-[0.1em] border border-white/5 bg-white/5 text-gray-400">
+                                        {activeTask.tag || 'TASK'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : activeProject ? (
+                    <div className="w-[320px] pointer-events-none">
+                        <div className="bg-[#1C1F26] p-6 rounded-xl border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.8)] rotate-2 scale-105 transition-transform overflow-hidden relative">
+                            {/* Ambient Project Glow */}
+                            <div className="absolute -top-10 -right-10 w-[150px] h-[150px] bg-blue-500/20 blur-[50px] rounded-full" />
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                                <div className="p-3 bg-gray-800 rounded-lg text-blue-400">
+                                    <Folder size={24} />
+                                </div>
+                            </div>
+                            <h3 className="font-black text-xl mb-1 text-white relative z-10 tracking-tight uppercase">{activeProject.name}</h3>
+                            <p className="text-sm text-gray-400 mb-4 relative z-10">{activeProject.tasks} active tasks</p>
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-800 relative z-10">
+                                <span className="text-[10px] font-black px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-widest">{activeProject.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </DragOverlay>
+        </DndContext >
+    );
+};
+
+export default DashboardShell;
