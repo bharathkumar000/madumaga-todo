@@ -80,8 +80,8 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
 
                         {/* Core Info Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                <div className="p-3 rounded-xl bg-blue-500/10 text-blue-400">
+                            <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
+                                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
                                     <MapPin size={20} />
                                 </div>
                                 <div className="min-w-0">
@@ -90,8 +90,8 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                 </div>
                             </div>
 
-                            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400">
+                            <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
+                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
                                     <Folder size={20} />
                                 </div>
                                 <div className="min-w-0">

@@ -6,7 +6,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 
 // Sortable Task Card Component
-const BoardTask = ({ task, onToggleTask, onDeleteTask }) => {
+const BoardTask = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
         data: { type: 'Task', task }
@@ -14,12 +14,12 @@ const BoardTask = ({ task, onToggleTask, onDeleteTask }) => {
 
     const style = {
         transform: CSS.Translate.toString(transform),
-        transition,
+        transition: isDragging ? 'none' : transition,
         backgroundImage: !task.completed ? `linear-gradient(135deg, ${task.color === 'blue' ? 'rgba(59, 130, 246, 0.25)' :
-                task.color === 'green' ? 'rgba(16, 185, 129, 0.25)' :
-                    task.color === 'amber' ? 'rgba(245, 158, 11, 0.25)' :
-                        task.color === 'rose' ? 'rgba(244, 63, 94, 0.25)' :
-                            task.color === 'indigo' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.05)'
+            task.color === 'green' ? 'rgba(16, 185, 129, 0.25)' :
+                task.color === 'amber' ? 'rgba(245, 158, 11, 0.25)' :
+                    task.color === 'rose' ? 'rgba(244, 63, 94, 0.25)' :
+                        task.color === 'indigo' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.05)'
             } 0%, rgba(22,25,29,0) 80%)` : 'none'
     };
 
@@ -33,77 +33,31 @@ const BoardTask = ({ task, onToggleTask, onDeleteTask }) => {
             style={style}
             {...listeners}
             {...attributes}
-            className={`relative px-3 py-2 rounded-[1.5rem] border border-white/5 transition-all duration-500 overflow-hidden group touch-none cursor-grab active:cursor-grabbing
+            className={`relative px-3 py-2 rounded-[2rem] border border-white/5 transition-all duration-500 overflow-hidden group touch-none cursor-grab active:cursor-grabbing
                 ${task.completed ? 'bg-white/[0.02] grayscale-[0.5] opacity-50' : 'bg-[#16191D]'}
                 hover:border-white/10 hover:shadow-[0_25px_60px_rgba(0,0,0,0.6)]
             `}
         >
-            {/* Ambient Secondary Glow (Top-Left) - Phase 2 */}
-            < div
-                className={`absolute -top-10 -left-10 w-[120px] h-[120px] blur-[50px] rounded-full transition-all duration-700 pointer-events-none group-hover:opacity-60
-                    ${task.completed ? 'opacity-0' : 'opacity-25'}
-                `}
-                style={{
-                    backgroundColor:
-                        task.color === 'blue' ? '#3B82F6' :
-                            task.color === 'green' ? '#10B981' :
-                                task.color === 'amber' ? '#F59E0B' :
-                                    task.color === 'rose' ? '#F43F5E' :
-                                        task.color === 'indigo' ? '#6366F1' : '#8AB4F8'
-                }}
-            ></div >
-
-            {/* Ambient Primary Glow (Bottom-Right) - Synced to Task Color */}
-            < div
-                className={`absolute -bottom-10 -right-10 w-[160px] h-[160px] blur-[50px] rounded-full transition-all duration-700 pointer-events-none group-hover:opacity-100
-                    ${task.completed ? 'opacity-0' : 'opacity-85'}
-                `}
-                style={{
-                    backgroundColor:
-                        task.color === 'blue' ? '#3B82F6' :
-                            task.color === 'green' ? '#10B981' :
-                                task.color === 'amber' ? '#F59E0B' :
-                                    task.color === 'rose' ? '#F43F5E' :
-                                        task.color === 'indigo' ? '#6366F1' : '#8AB4F8'
-                }}
-            ></div >
-            <div
-                className={`absolute top-0 right-0 bottom-0 w-[40px] blur-[35px] pointer-events-none transition-all duration-700 group-hover:opacity-40
-                    ${task.completed ? 'opacity-0' : 'opacity-20'}
-                `}
-                style={{
-                    backgroundColor:
-                        task.color === 'blue' ? '#3B82F6' :
-                            task.color === 'green' ? '#10B981' :
-                                task.color === 'amber' ? '#F59E0B' :
-                                    task.color === 'rose' ? '#F43F5E' :
-                                        task.color === 'indigo' ? '#6366F1' : '#8AB4F8'
-                }}
-            ></div>
-
-            <div className="relative z-10 px-3 py-2.5">
-                <div className="flex justify-between items-start gap-4">
-                    {/* Title Area (IVC Style) */}
+            <div className="relative z-10 p-3">
+                <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
-                        <h4 className={`font-black text-[13px] leading-tight tracking-tight uppercase transition-all ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                        <h4 className={`font-black text-[13px] leading-tight tracking-tight uppercase transition-all mb-2 ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                             {task.title}
                         </h4>
-                        <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-[8px] uppercase font-black px-1.5 py-0.5 rounded-md bg-white/5 border border-white/5 text-gray-500 tracking-wider">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[7px] uppercase font-black px-1.5 py-0.5 rounded-md bg-white/5 border border-white/5 text-gray-500 tracking-wider">
                                 {task.tag || 'Open'}
                             </span>
-                            <div className="flex items-center gap-1 text-[8px] text-gray-600 font-bold uppercase tracking-tighter">
-                                <Calendar size={9} />
+                            <div className="flex items-center gap-1 text-[7px] text-gray-600 font-bold uppercase tracking-tighter">
+                                <Calendar size={8} />
                                 <span>{task.date || 'No Date'}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Actions & User Area */}
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        {/* Priority Badge */}
                         {task.priority && (
-                            <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${task.priority === 'High' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
+                            <div className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-wider border ${task.priority === 'High' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
                                 task.priority === 'Mid' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                                     'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 }`}>
@@ -111,39 +65,42 @@ const BoardTask = ({ task, onToggleTask, onDeleteTask }) => {
                             </div>
                         )}
 
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black bg-white/10 text-gray-400 border border-white/5">
-                            {task.creatorInitial || 'ID'}
-                        </div>
-
-                        <div className="flex items-center gap-1">
+                        <div className="grid grid-cols-2 gap-1">
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleTask(task.id);
-                                }}
-                                className={`p-1 rounded-md transition-all active:scale-95 border ${task.completed ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-white/5 border-white/5 text-emerald-400/50 hover:text-emerald-400 hover:bg-emerald-500/10'}`}
+                                onClick={(e) => { e.stopPropagation(); onEditTask?.(task); }}
+                                className="p-1 rounded-md bg-white/5 border border-white/5 text-amber-400/50 hover:text-amber-400 hover:bg-black transition-all active:scale-95"
                             >
-                                <Check size={11} strokeWidth={3} />
+                                <Check size={10} className="hidden" /> {/* Placeholder/Structural match */}
+                                <svg size={10} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                             </button>
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteTask(task.id);
-                                }}
-                                className="p-1 rounded-md bg-white/5 border border-white/5 text-rose-400/50 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-95"
+                                onClick={(e) => { e.stopPropagation(); onDuplicateTask?.(task.id); }}
+                                className="p-1 rounded-md bg-white/5 border border-white/5 text-indigo-400/50 hover:text-indigo-400 hover:bg-black transition-all active:scale-95"
                             >
-                                <Trash2 size={11} strokeWidth={3} />
+                                <svg size={10} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
+                                className={`p-1 rounded-md transition-all active:scale-95 border ${task.completed ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-white/5 border-white/5 text-emerald-400/50 hover:text-emerald-400 hover:bg-black'}`}
+                            >
+                                <Check size={10} strokeWidth={3} />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                                className="p-1 rounded-md bg-white/5 border border-white/5 text-rose-400/50 hover:text-rose-400 hover:bg-black transition-all active:scale-95"
+                            >
+                                <Trash2 size={10} strokeWidth={3} />
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 
 // Sortable Column Component
-const Column = ({ id, title, count, color, tasks = [], onToggleTask, onDeleteTask }) => {
+const Column = ({ id, title, count, color, tasks = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask }) => {
     const { setNodeRef } = useDroppable({
         id: id,
         data: { type: 'Column', id }
@@ -175,6 +132,8 @@ const Column = ({ id, title, count, color, tasks = [], onToggleTask, onDeleteTas
                             task={task}
                             onToggleTask={onToggleTask}
                             onDeleteTask={onDeleteTask}
+                            onDuplicateTask={onDuplicateTask}
+                            onEditTask={onEditTask}
                         />
                     ))}
                 </SortableContext>
@@ -183,7 +142,7 @@ const Column = ({ id, title, count, color, tasks = [], onToggleTask, onDeleteTas
     );
 };
 
-const TaskBoard = ({ tasks, onToggleTask, onDeleteTask }) => {
+const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask }) => {
     const getTasksByStatus = (status) => tasks.filter(t => t.status === status);
 
     return (

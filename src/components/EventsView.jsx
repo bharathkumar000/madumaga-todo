@@ -47,8 +47,8 @@ const EventsView = ({ events = [], onAddEvent, onEventClick }) => {
                             </div>
 
                             <div className="space-y-4">
-                                <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
-                                    <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+                                <div className="flex items-center gap-3 bg-white/5 py-2 px-3 rounded-xl border border-white/5">
+                                    <div className="p-1.5 bg-blue-500/10 text-blue-400 rounded-lg">
                                         <MapPin size={14} />
                                     </div>
                                     <div className="min-w-0">

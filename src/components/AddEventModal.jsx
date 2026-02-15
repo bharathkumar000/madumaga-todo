@@ -4,8 +4,8 @@ import { X, Calendar as CalendarIcon, MapPin, AlignLeft, ChevronLeft, ChevronRig
 
 const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = null }) => {
     const [title, setTitle] = useState('');
-    const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
-    const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [fromDate, setFromDate] = useState(new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'));
+    const [toDate, setToDate] = useState(new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'));
     const [location, setLocation] = useState('');
     const [type, setType] = useState('HACKATHON');
     const [description, setDescription] = useState('');
@@ -19,10 +19,18 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
     const [viewDate, setViewDate] = useState(new Date());
 
+    const formatDateLocal = (date) => {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const resetForm = () => {
         setTitle('');
-        setFromDate(new Date().toISOString().split('T')[0]);
-        setToDate(new Date().toISOString().split('T')[0]);
+        setFromDate(formatDateLocal(new Date()));
+        setToDate(formatDateLocal(new Date()));
         setLocation('');
         setType('HACKATHON');
         setDescription('');
@@ -38,13 +46,13 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             if (eventToEdit.date) {
                 const d = new Date(eventToEdit.date);
                 if (!isNaN(d.getTime())) {
-                    setFromDate(d.toISOString().split('T')[0]);
+                    setFromDate(formatDateLocal(d));
                 }
             }
             if (eventToEdit.toDate) {
                 const d = new Date(eventToEdit.toDate);
                 if (!isNaN(d.getTime())) {
-                    setToDate(d.toISOString().split('T')[0]);
+                    setToDate(formatDateLocal(d));
                 }
             }
             setLocation(eventToEdit.location || '');
@@ -201,12 +209,12 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                         </div>
                                         <div className="grid grid-cols-7 gap-1">
                                             {generateDays().map((d, i) => {
-                                                const isSelected = d.date.toISOString().split('T')[0] === fromDate;
-                                                const isToday = d.date.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                                                const isSelected = formatDateLocal(d.date) === fromDate;
+                                                const isToday = formatDateLocal(d.date) === formatDateLocal(new Date());
                                                 return (
                                                     <button
                                                         key={i}
-                                                        onClick={() => { setFromDate(d.date.toISOString().split('T')[0]); setIsFromCalendarOpen(false); }}
+                                                        onClick={() => { setFromDate(formatDateLocal(d.date)); setIsFromCalendarOpen(false); }}
                                                         className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:bg-indigo-400' : ''} ${isToday && !isSelected ? 'border border-indigo-500/30' : ''}`}
                                                     >
                                                         {d.day}
@@ -256,12 +264,12 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                         </div>
                                         <div className="grid grid-cols-7 gap-1">
                                             {generateDays().map((d, i) => {
-                                                const isSelected = d.date.toISOString().split('T')[0] === toDate;
-                                                const isToday = d.date.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                                                const isSelected = formatDateLocal(d.date) === toDate;
+                                                const isToday = formatDateLocal(d.date) === formatDateLocal(new Date());
                                                 return (
                                                     <button
                                                         key={i}
-                                                        onClick={() => { setToDate(d.date.toISOString().split('T')[0]); setIsToCalendarOpen(false); }}
+                                                        onClick={() => { setToDate(formatDateLocal(d.date)); setIsToCalendarOpen(false); }}
                                                         className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:bg-indigo-400' : ''} ${isToday && !isSelected ? 'border border-indigo-500/30' : ''}`}
                                                     >
                                                         {d.day}
