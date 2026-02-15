@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { format, addHours, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfDay, addDays, subDays } from 'date-fns';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Check, Trash2 } from 'lucide-react';
+import { Check, Trash2, RotateCw } from 'lucide-react';
 
-const HourCell = ({ day, hour }) => {
+const HourCell = React.memo(({ day, hour }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: `${day.toISOString()}-${hour}`,
     });
@@ -12,13 +12,12 @@ const HourCell = ({ day, hour }) => {
     return (
         <div
             ref={setNodeRef}
-            className={`h-12 border-b border-r border-[#2A2E35] transition-colors relative ${isOver ? 'bg-primary/20' : ''}`}
-        >
-        </div>
+            className={`h-[50px] border-b border-r border-[#2A2E35] transition-colors relative ${isOver ? 'bg-primary/20' : ''}`}
+        />
     );
-};
+});
 
-const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDeleteTask, onUpdateTask }) => {
+const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTask, onDeleteTask, onUpdateTask, allUsers = [] }) => {
     const [isResizing, setIsResizing] = useState(false);
     const [resizeType, setResizeType] = useState(null); // 'top' or 'bottom'
     const [tempDuration, setTempDuration] = useState(task.duration || 60);
@@ -50,7 +49,7 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
 
         const onMouseMove = (moveEvent) => {
             const deltaY = moveEvent.clientY - startY;
-            const deltaMinutes = Math.round(deltaY / 12) * 15; // 48px = 60min, 12px = 15min
+            const deltaMinutes = Math.round(deltaY / 12.5) * 15; // 50px = 60min, 12.5px = 15min
 
             if (type === 'bottom') {
                 const newDuration = Math.max(15, initialDuration + deltaMinutes);
@@ -90,8 +89,20 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
 
     if (isDragging) return null;
 
-    const hourHeight = 48;
-    const { offset = 0, width = 100 } = layout || {};
+    const hourHeight = 50;
+    const assignee = allUsers.find(u => u.id === task.assignedTo) || allUsers.find(u => u.id === task.userId);
+    const assigneeColor = assignee?.color || task.color || 'blue';
+
+    const { offset = 0, width = 88 } = layout || {};
+
+    const taskColor = assigneeColor === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
+        assigneeColor === 'green' ? 'rgba(16, 185, 129, 0.4)' :
+            (assigneeColor === 'amber' || assigneeColor === 'yellow') ? 'rgba(245, 158, 11, 0.4)' :
+                assigneeColor === 'rose' ? 'rgba(244, 63, 94, 0.4)' :
+                    assigneeColor === 'pink' ? 'rgba(236, 72, 153, 0.4)' :
+                        assigneeColor === 'teal' ? 'rgba(20, 184, 166, 0.4)' :
+                            assigneeColor === 'orange' ? 'rgba(249, 115, 22, 0.4)' :
+                                assigneeColor === 'purple' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255,255,255,0.05)';
 
     const style = {
         transform: CSS.Translate.toString(transform),
@@ -100,12 +111,10 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
         left: `${6 + offset}%`,
         width: `${width}%`,
         zIndex: isDragging ? 50 : isResizing ? 45 : 10 + Math.floor(offset),
-        backgroundImage: !task.completed ? `linear-gradient(135deg, ${task.color === 'blue' ? 'rgba(59, 130, 246, 0.25)' :
-            task.color === 'green' ? 'rgba(16, 185, 129, 0.25)' :
-                task.color === 'amber' ? 'rgba(245, 158, 11, 0.25)' :
-                    task.color === 'rose' ? 'rgba(244, 63, 94, 0.25)' :
-                        task.color === 'indigo' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.05)'
-            } 0%, rgba(22,25,29,0) 80%)` : 'none'
+        backgroundImage: !task.completed ? `
+            radial-gradient(circle at top right, rgba(0,0,0,0.6) 0%, transparent 50%),
+            radial-gradient(circle at bottom right, ${taskColor} 0%, transparent 70%)
+        ` : 'none'
     };
 
     return (
@@ -136,30 +145,36 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
 
             {/* Ambient Glows */}
             <div
-                className={`absolute -top-10 -left-10 w-[100px] h-[100px] blur-[45px] rounded-full transition-all duration-700 pointer-events-none group-hover:opacity-60
-                    ${task.completed ? 'opacity-0' : 'opacity-20'}
+                className={`absolute -top-12 -left-12 w-[140px] h-[140px] blur-[55px] rounded-full transition-all duration-700 pointer-events-none group-hover:opacity-60
+                    ${task.completed ? 'opacity-0' : 'opacity-25'}
                 `}
                 style={{
                     backgroundColor:
-                        task.color === 'blue' ? '#3B82F6' :
-                            task.color === 'green' ? '#10B981' :
-                                task.color === 'amber' ? '#F59E0B' :
-                                    task.color === 'rose' ? '#F43F5E' :
-                                        task.color === 'indigo' ? '#6366F1' : '#8AB4F8'
+                        assigneeColor === 'blue' ? '#3B82F6' :
+                            assigneeColor === 'green' ? '#10B981' :
+                                (assigneeColor === 'amber' || assigneeColor === 'yellow') ? '#F59E0B' :
+                                    assigneeColor === 'rose' ? '#F43F5E' :
+                                        assigneeColor === 'pink' ? '#EC4899' :
+                                            assigneeColor === 'teal' ? '#14B8A6' :
+                                                assigneeColor === 'orange' ? '#F97316' :
+                                                    assigneeColor === 'purple' ? '#A855F7' : '#8AB4F8'
                 }}
             ></div>
 
             <div
-                className={`absolute -bottom-10 -right-10 w-[140px] h-[140px] blur-[45px] rounded-full transition-all duration-700 pointer-events-none group-hover:opacity-100
-                    ${task.completed ? 'opacity-0' : 'opacity-80'}
+                className={`absolute -bottom-12 -right-12 w-[180px] h-[180px] blur-[55px] rounded-full transition-all duration-700 pointer-events-none group-hover:opacity-100
+                    ${task.completed ? 'opacity-0' : 'opacity-85'}
                 `}
                 style={{
                     backgroundColor:
-                        task.color === 'blue' ? '#3B82F6' :
-                            task.color === 'green' ? '#10B981' :
-                                task.color === 'amber' ? '#F59E0B' :
-                                    task.color === 'rose' ? '#F43F5E' :
-                                        task.color === 'indigo' ? '#6366F1' : '#8AB4F8'
+                        assigneeColor === 'blue' ? '#3B82F6' :
+                            assigneeColor === 'green' ? '#10B981' :
+                                (assigneeColor === 'amber' || assigneeColor === 'yellow') ? '#F59E0B' :
+                                    assigneeColor === 'rose' ? '#F43F5E' :
+                                        assigneeColor === 'pink' ? '#EC4899' :
+                                            assigneeColor === 'teal' ? '#14B8A6' :
+                                                assigneeColor === 'orange' ? '#F97316' :
+                                                    assigneeColor === 'purple' ? '#A855F7' : '#8AB4F8'
                 }}
             ></div>
 
@@ -170,7 +185,7 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
                 <div className="flex justify-between items-start gap-2 h-full">
                     <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
                         <div>
-                            <div className={`font-black tracking-tight leading-tight uppercase text-[12px] ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                            <div className={`font-black tracking-tight leading-tight uppercase text-[12px] line-clamp-2 ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                 {task.title}
                             </div>
                             <div className="mt-1.5 flex flex-col gap-0.5">
@@ -191,6 +206,11 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
                                 <div className="text-[7px] font-black text-white/40 uppercase tracking-widest leading-none">
                                     {tempDuration >= 60 ? `${Math.floor(tempDuration / 60)}h ${tempDuration % 60}m` : `${tempDuration}m`}
                                 </div>
+                                {(task.projectName || (task.tag && task.tag !== 'NEW')) && (
+                                    <div className="mt-1 text-[7px] font-black text-white/30 uppercase tracking-[0.15em] border border-white/5 px-1.5 py-0.5 rounded bg-white/5 line-clamp-2 max-w-[100px]">
+                                        {task.projectName || task.tag}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -205,7 +225,7 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
                             </div>
                         )}
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 scale-90 translate-x-1 group-hover:scale-100 group-hover:translate-x-0 transition-all duration-300">
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -230,9 +250,9 @@ const DraggableCalendarTask = ({ task, startHour, layout, onToggleTask, onDelete
             </div>
         </div >
     );
-};
+});
 
-const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdateTask }) => {
+const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [], projects = [], onUpdateTask, selectedMemberId, onClearMemberFilter, allUsers = [] }) => {
     const scrollContainerRef = useRef(null);
     const todayRef = useRef(null);
     const [columnWidth, setColumnWidth] = useState(0);
@@ -289,7 +309,7 @@ const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdate
                     // Scroll to 8 AM vertically
                     const currentHour = new Date().getHours();
                     const scrollToHour = Math.max(0, currentHour - 1);
-                    container.scrollTop = scrollToHour * 48;
+                    container.scrollTop = scrollToHour * 50;
 
                     // Restore snapped movement for subsequent user scrolls
                     setTimeout(() => {
@@ -299,7 +319,7 @@ const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdate
                 }
             });
         }
-    }, [columnWidth, days]);
+    }, [columnWidth, days]); // Only run when columnWidth or days change
 
     return (
         <div
@@ -311,14 +331,19 @@ const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdate
                 {/* Sticky Left Column: Time Labels & Corner */}
                 <div className="sticky left-0 z-30 bg-[#0B0D10] border-r border-[#1E2025] flex flex-col flex-shrink-0">
                     {/* Top-Left Corner (Sticky Top & Left) */}
-                    <div className="sticky top-0 z-40 bg-[#16191D] h-20 border-b border-[#1E2025] flex items-center justify-center w-20">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">Time</span>
+                    <div className="sticky top-0 z-40 bg-[#16191D] h-[110px] border-b border-[#1E2025] flex flex-col items-center justify-center w-20 shadow-xl">
+                        <div className="flex-1 flex items-center justify-center w-full border-b border-white/5">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">Time</span>
+                        </div>
+                        <div className="h-14 flex items-center justify-center w-full bg-[#0F1115]">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest -rotate-90">Events</span>
+                        </div>
                     </div>
 
                     {/* Time Labels */}
                     <div className="flex flex-col w-20 bg-[#0B0D10]">
                         {hours.map((hour) => (
-                            <div key={hour} className="h-12 relative border-b border-transparent">
+                            <div key={hour} className="h-[50px] relative border-b border-transparent">
                                 <span className="absolute top-2 right-4 text-[10px] text-gray-500 font-bold uppercase">
                                     {format(addHours(startOfDay(new Date()), hour), 'h a')}
                                 </span>
@@ -336,6 +361,17 @@ const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdate
                             return isSameDay(eDate, day);
                         });
 
+                        const getTypeColor = (type) => {
+                            const t = type?.toUpperCase();
+                            const colors = {
+                                'HACKATHON': 'from-pink-500 to-rose-500 text-pink-500',
+                                'WORKSHOP': 'from-purple-500 to-pink-600 text-purple-500',
+                                'MEETUP': 'from-blue-400 to-cyan-500 text-blue-400',
+                                'CONFERENCE': 'from-amber-400 to-orange-500 text-amber-500'
+                            };
+                            return colors[t] || 'from-pink-500 to-blue-500 text-pink-400';
+                        };
+
                         return (
                             <div
                                 key={day.toString()}
@@ -343,36 +379,57 @@ const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdate
                                 className="flex flex-col border-r border-[#1E2025] snap-start"
                                 style={{ width: columnWidth || '300px' }}
                             >
-                                {/* Day Header (Sticky Top) */}
-                                <div className="sticky top-0 z-20 bg-[#16191D] h-20 border-b border-[#1E2025] flex flex-col items-center justify-center">
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                                        <span>{format(day, 'MMM')}</span>
-                                        <span className="opacity-50">•</span>
-                                        <span>
-                                            {isToday ? 'Today' :
-                                                isSameDay(day, addDays(new Date(), -1)) ? 'Yesterday' :
-                                                    isSameDay(day, addDays(new Date(), 1)) ? 'Tomorrow' :
-                                                        format(day, 'EEE')}
-                                        </span>
+                                {/* Day Header & Events Section (Sticky Top) */}
+                                <div className="sticky top-0 z-20 bg-[#16191D] h-[110px] border-b border-[#1E2025] flex flex-col shadow-xl">
+                                    {/* Date Header */}
+                                    <div className="flex-1 flex flex-col items-center justify-center border-b border-white/5">
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                                            <span>{format(day, 'MMM')}</span>
+                                            <span className="opacity-50">•</span>
+                                            <span>
+                                                {isToday ? 'Today' :
+                                                    isSameDay(day, addDays(new Date(), -1)) ? 'Yesterday' :
+                                                        isSameDay(day, addDays(new Date(), 1)) ? 'Tomorrow' :
+                                                            format(day, 'EEE')}
+                                            </span>
+                                        </div>
+
+                                        <div className={`w-8 h-8 flex items-center justify-center rounded-full text-base font-bold transition-all ${isToday
+                                            ? 'bg-pink-600 text-white shadow-lg shadow-pink-500/40 transform scale-105'
+                                            : 'text-gray-200'
+                                            }`}>
+                                            {format(day, 'd')}
+                                        </div>
                                     </div>
 
-                                    {/* Event Indicator - Moved between month/day and date */}
-                                    {dayEvents.length > 0 && (
-                                        <div className="mb-0.5 flex justify-center w-full px-2">
-                                            <div className="flex items-center gap-1 bg-indigo-500/20 border border-indigo-500/20 px-2 py-0.5 rounded-full max-w-full scale-[0.85] origin-center shadow-[0_0_10px_rgba(79,70,229,0.1)]">
-                                                <div className="w-1 h-1 rounded-full bg-indigo-500 animate-pulse"></div>
-                                                <span className="text-[9px] font-black text-indigo-400 truncate max-w-[80px] uppercase tracking-tighter">
-                                                    {dayEvents[0].title}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* Dedicated Large High-Visibility Events Row */}
+                                    <div className="h-14 bg-[#0F1115] flex items-center px-4 gap-2 overflow-x-auto custom-scrollbar-hide">
+                                        {dayEvents.length > 0 ? (
+                                            dayEvents.map(event => {
+                                                const colors = getTypeColor(event.type);
+                                                const textCol = colors.split(' ').pop();
+                                                const grad = colors.split(' ').slice(0, 2).join(' ');
 
-                                    <div className={`w-10 h-10 flex items-center justify-center rounded-full text-xl font-bold transition-all ${isToday
-                                        ? 'bg-[#4F46E5] text-white shadow-lg shadow-indigo-500/40 transform scale-110'
-                                        : 'text-gray-200'
-                                        }`}>
-                                        {format(day, 'd')}
+                                                return (
+                                                    <div
+                                                        key={event.id}
+                                                        className="flex items-center gap-2.5 bg-white/[0.04] border border-white/10 px-4 py-1.5 rounded-2xl shrink-0 h-[42px] shadow-lg shadow-black/40 min-w-[140px]"
+                                                    >
+                                                        <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${grad} animate-pulse shadow-[0_0_12px_rgba(79,70,229,0.5)]`}></div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className={`text-[10px] font-black ${textCol} truncate uppercase tracking-wider leading-tight`}>
+                                                                {event.title}
+                                                            </span>
+                                                            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest leading-none mt-0.5 opacity-80">
+                                                                {projects.find(p => p.id === event.projectId)?.name || 'General'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <span className="text-[9px] font-black text-gray-800 uppercase tracking-[0.3em] ml-2 italic opacity-50">Operational Idle</span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -441,6 +498,7 @@ const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdate
                                                     onToggleTask={onToggleTask}
                                                     onDeleteTask={onDeleteTask}
                                                     onUpdateTask={onUpdateTask}
+                                                    allUsers={allUsers}
                                                 />
                                             );
                                         });
@@ -464,8 +522,19 @@ const CalendarGrid = ({ tasks, onToggleTask, onDeleteTask, events = [], onUpdate
                     })}
                 </div>
             </div>
+            {selectedMemberId && (
+                <div className="absolute top-6 right-8 z-[100]">
+                    <button
+                        onClick={onClearMemberFilter}
+                        className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-pink-600 text-white text-xs font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(236,72,153,0.4)] hover:bg-pink-700 transition-all active:scale-95 group border border-white/10"
+                    >
+                        <RotateCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                        Refresh
+                    </button>
+                </div>
+            )}
         </div>
     );
-};
+});
 
 export default CalendarGrid;
