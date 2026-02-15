@@ -34,7 +34,10 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
         { id: 'green', class: 'bg-[#10B981]', glow: 'shadow-[#10B981]/50', name: 'Emerald' },
         { id: 'amber', class: 'bg-[#F59E0B]', glow: 'shadow-[#F59E0B]/50', name: 'Amber' },
         { id: 'rose', class: 'bg-[#F43F5E]', glow: 'shadow-[#F43F5E]/50', name: 'Rose' },
-        { id: 'indigo', class: 'bg-[#6366F1]', glow: 'shadow-[#6366F1]/50', name: 'Indigo' }
+        { id: 'pink', class: 'bg-[#EC4899]', glow: 'shadow-[#EC4899]/50', name: 'Pink' },
+        { id: 'teal', class: 'bg-[#14B8A6]', glow: 'shadow-[#14B8A6]/50', name: 'Teal' },
+        { id: 'orange', class: 'bg-[#F97316]', glow: 'shadow-[#F97316]/50', name: 'Sunset' },
+        { id: 'purple', class: 'bg-[#A855F7]', glow: 'shadow-[#A855F7]/50', name: 'Galaxy' }
     ];
 
     const takenColors = users
@@ -48,13 +51,16 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                 onClick={onClose}
             ></div>
 
-            <div className="relative w-full max-w-xl bg-[#16191D] border border-white/10 rounded-[2.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="relative w-full max-w-lg bg-[#16191D] border border-white/10 rounded-2xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="h-24 w-full relative" style={{
                     backgroundImage: `linear-gradient(to right, ${color === 'blue' ? '#3B82F6, #1D4ED8' :
                         color === 'green' ? '#10B981, #047857' :
                             color === 'rose' ? '#F43F5E, #BE123C' :
-                                color === 'indigo' ? '#6366F1, #4338CA' :
-                                    '#F59E0B, #B45309'
+                                color === 'pink' ? '#EC4899, #BE185D' :
+                                    color === 'teal' ? '#14B8A6, #0D9488' :
+                                        color === 'orange' ? '#F97316, #EA580C' :
+                                            color === 'purple' ? '#A855F7, #7E22CE' :
+                                                '#F59E0B, #B45309'
                         })`
                 }}>
                     <button
@@ -64,21 +70,23 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                         <X size={20} />
                     </button>
                     <div className="absolute -bottom-10 left-8">
-                        <div className={`w-20 h-20 rounded-3xl border-4 border-[#16191D] flex items-center justify-center text-white text-3xl font-black shadow-2xl transition-all duration-500 hover:scale-105`}
+                        <div className={`w-16 h-16 rounded-2xl border-4 border-[#16191D] flex items-center justify-center text-white text-2xl font-black shadow-2xl transition-all duration-500 hover:scale-105`}
                             style={{
                                 backgroundColor:
                                     color === 'blue' ? '#3B82F6' :
                                         color === 'green' ? '#10B981' :
                                             color === 'rose' ? '#F43F5E' :
                                                 color === 'indigo' ? '#6366F1' :
-                                                    '#F59E0B'
+                                                    color === 'purple' ? '#A855F7' :
+                                                        color === 'pink' ? '#EC4899' :
+                                                            '#F59E0B'
                             }}>
                             {avatar || name.charAt(0) || 'U'}
                         </div>
                     </div>
                 </div>
 
-                <div className="pt-14 p-8 sm:p-10 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div className="pt-10 p-6 sm:p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     <div>
                         <h2 className="text-2xl font-black text-white uppercase italic tracking-tight">User Profile</h2>
                         <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">Identity & Team Personalization</p>
@@ -93,7 +101,7 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors uppercase tracking-tight"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors uppercase tracking-tight"
                                 placeholder="..."
                             />
                         </div>
@@ -106,7 +114,7 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                                 value={avatar}
                                 onChange={(e) => setAvatar(e.target.value)}
                                 maxLength={2}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-center text-xl focus:outline-none focus:border-white/20 transition-colors"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-center text-xl focus:outline-none focus:border-white/20 transition-colors"
                                 placeholder="🔥"
                             />
                         </div>
@@ -124,7 +132,7 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                                         key={c.id}
                                         onClick={() => !isTaken && setColor(c.id)}
                                         disabled={isTaken}
-                                        className={`w-12 h-12 rounded-2xl transition-all bg-gradient-to-br ${c.grad || (c.id === 'blue' ? 'from-blue-500 to-indigo-600' : c.id === 'green' ? 'from-emerald-500 to-teal-600' : c.id === 'rose' ? 'from-rose-500 to-red-600' : c.id === 'indigo' ? 'from-indigo-500 to-purple-600' : 'from-amber-400 to-orange-500')} flex items-center justify-center relative shadow-lg
+                                        className={`w-12 h-12 rounded-2xl transition-all bg-gradient-to-br ${c.id === 'blue' ? 'from-blue-500 to-indigo-600' : c.id === 'green' ? 'from-emerald-500 to-teal-600' : c.id === 'rose' ? 'from-rose-500 to-red-600' : c.id === 'pink' ? 'from-pink-400 to-rose-600' : c.id === 'teal' ? 'from-teal-400 to-cyan-600' : c.id === 'orange' ? 'from-orange-400 to-red-500' : c.id === 'purple' ? 'from-purple-400 to-indigo-600' : 'from-amber-400 to-orange-500'} flex items-center justify-center relative shadow-lg
                                             ${color === c.id ? `ring-2 ring-white ring-offset-2 ring-offset-[#16191D] scale-110 ${c.glow}` : ''}
                                             ${isTaken ? 'opacity-20 cursor-not-allowed grayscale' : 'hover:scale-110 opacity-100 hover:shadow-2xl'}`}
                                     >
@@ -149,7 +157,7 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                         <textarea
                             value={bio}
                             onChange={(e) => setBio(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors italic min-h-[80px]"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors italic min-h-[80px]"
                             placeholder="..."
                         />
                     </div>
@@ -157,14 +165,21 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                     <div className="pt-4 flex gap-4">
                         <button
                             onClick={onClose}
-                            className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-xs font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 transition-all"
+                            className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 transition-all"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className={`flex-[2] py-4 rounded-2xl text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl
-                                ${color === 'blue' ? 'bg-blue-600 shadow-blue-500/20' : color === 'green' ? 'bg-emerald-600 shadow-emerald-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}
+                            className={`flex-[2] py-3 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl
+                                ${color === 'blue' ? 'bg-blue-600 shadow-blue-500/20' :
+                                    color === 'green' ? 'bg-emerald-600 shadow-emerald-500/20' :
+                                        color === 'rose' ? 'bg-rose-600 shadow-rose-500/20' :
+                                            color === 'pink' ? 'bg-pink-600 shadow-pink-500/20' :
+                                                color === 'teal' ? 'bg-teal-600 shadow-teal-500/20' :
+                                                    color === 'orange' ? 'bg-orange-500 shadow-orange-500/20' :
+                                                        color === 'purple' ? 'bg-purple-600 shadow-purple-500/20' :
+                                                            'bg-amber-500 shadow-amber-500/20'}`}
                         >
                             <Save size={16} />
                             Save Profile

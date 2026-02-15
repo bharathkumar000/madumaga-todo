@@ -10,5 +10,36 @@
 body {
   margin: 0;
   min-height: 100vh;
-  @apply bg-gray-900 text-white;
+  @apply bg-gray-900 text-white overflow-hidden;
+}
+
+/* Optimize performance during Drag and Drop */
+.is-dragging * {
+  pointer-events: none !important;
+  user-select: none !important;
+  cursor: grabbing !important;
+}
+
+.is-dragging .drag-handle,
+.is-dragging [data-dnd-active="true"] * {
+  pointer-events: auto !important;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

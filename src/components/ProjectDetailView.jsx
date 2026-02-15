@@ -117,7 +117,9 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                                     onClick={() => onToggleTask(task.id)}
                                 >
                                     <div className="flex justify-between items-start mb-3">
-                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{task.tag || 'TASK'}</span>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                                            {task.projectName || (task.tag !== 'NEW' ? task.tag : '') || 'TASK'}
+                                        </span>
                                         <Clock size={14} className="text-gray-700" />
                                     </div>
                                     <h4 className="font-bold text-gray-200 group-hover:text-white transition-colors">{task.title}</h4>
@@ -155,7 +157,9 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                                     onClick={() => onToggleTask(task.id)}
                                 >
                                     <div className="flex justify-between items-start mb-3">
-                                        <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest line-through">{task.tag || 'TASK'}</span>
+                                        <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest line-through bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                                            {task.projectName || (task.tag !== 'NEW' ? task.tag : '') || 'TASK'}
+                                        </span>
                                         <CheckCircle2 size={14} className="text-emerald-500/50" />
                                     </div>
                                     <h4 className="font-bold text-gray-500 line-through">{task.title}</h4>

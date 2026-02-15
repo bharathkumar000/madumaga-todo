@@ -4,28 +4,42 @@ import { X, Clock, AlignLeft, Calendar as CalendarIcon, Palette, Folder, Chevron
 import { isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth } from 'date-fns';
 
 const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projects = [], taskToEdit }) => {
+    const formatDateLocal = (dateInput) => {
+        const d = new Date(dateInput);
+        if (isNaN(d.getTime())) return '';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = formatDateLocal(new Date());
+
     const [title, setTitle] = useState('');
     const [type, setType] = useState('Task');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
-    const [selectedColor, setSelectedColor] = useState(currentUser?.color || 'blue');
+    const [date, setDate] = useState(todayStr); // YYYY-MM-DD
+    const [selectedAssigneeId, setSelectedAssigneeId] = useState(currentUser?.id || (users[0]?.id || ''));
     const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id || '');
     const [viewDate, setViewDate] = useState(new Date()); // For calendar navigation
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [priority, setPriority] = useState('High');
     const [isPriorityOpen, setIsPriorityOpen] = useState(false);
 
+    const activeAssignee = users.find(u => u.id === selectedAssigneeId);
+    const derivedColor = activeAssignee?.color || 'blue';
+
     React.useEffect(() => {
         if (taskToEdit) {
             setTitle(taskToEdit.title);
             // setType(taskToEdit.type || 'Task'); // If you have types
-            setDate(taskToEdit.date ? new Date(taskToEdit.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+            setDate(taskToEdit.date ? formatDateLocal(taskToEdit.date) : todayStr);
             setPriority(taskToEdit.priority || 'High');
-            // Logic for project and color if needed
+            setSelectedAssigneeId(taskToEdit.assignedTo || taskToEdit.userId || currentUser?.id);
         } else {
-            // Reset fields for new task
             setTitle('');
             setPriority('High');
-            setDate(new Date().toISOString().split('T')[0]);
+            setDate(todayStr);
+            setSelectedAssigneeId(currentUser?.id || (users[0]?.id || ''));
         }
     }, [taskToEdit, isOpen]);
 
@@ -58,52 +72,58 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
     const handleSave = () => {
         if (!title.trim()) return;
 
-        // Find the user assigned to this color
-        const assignedUser = users.find(u => u.color === selectedColor) || users[0];
+        const assignedUser = users.find(u => u.id === selectedAssigneeId) || users[0];
         const selectedProject = projects.find(p => String(p.id) === String(selectedProjectId));
 
-        const colorClasses = {
-            blue: 'rgba(59, 130, 246, 0.25)',
-            green: 'rgba(16, 185, 129, 0.25)',
-            amber: 'rgba(245, 158, 11, 0.25)',
-            rose: 'rgba(244, 63, 94, 0.25)',
-            indigo: 'rgba(99, 102, 241, 0.25)'
-        };
-
-        const selectedDate = new Date(date);
+        const [y, m, d_val] = date.split('-').map(Number);
+        const selectedDate = new Date(y, m - 1, d_val);
         const today = startOfDay(new Date());
-        const taskDateObj = startOfDay(selectedDate);
+        const taskDate = startOfDay(selectedDate);
+
         let status = 'WAITING';
+        if (date) {
+            if (isBefore(taskDate, today)) {
+                status = 'DELAYED';
+            } else if (isSameDay(taskDate, today)) {
+                status = 'TODAY';
+            } else if (isBefore(taskDate, endOfWeek(today, { weekStartsOn: 0 }))) {
+                status = 'THIS_WEEK';
+            } else if (isBefore(taskDate, endOfMonth(today))) {
+                status = 'THIS_MONTH';
+            } else {
+                status = 'UPCOMING';
+            }
+        }
 
         onSave({
             title,
             type,
             status,
-            tag: 'NEW',
-            userId: assignedUser?.id,
+            tag: '',
+            userId: currentUser?.id, // Creator
+            assignedTo: assignedUser?.id, // Assignee
             creatorName: assignedUser?.name,
             creatorInitial: assignedUser?.name?.charAt(0),
-            projectName: selectedProject?.name || 'General',
-            color: selectedColor, // Store just the name for consistency with other parts
+            projectName: selectedProject?.name || '',
+            color: derivedColor,
             isGradient: true,
             priority,
-            date: selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+            date: date ? selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+            rawDate: date ? selectedDate.toISOString() : ''
         });
         setTitle('');
         setType('Task');
-        setDate(new Date().toISOString().split('T')[0]);
-        setSelectedColor(currentUser?.color || 'blue');
+        setDate(todayStr);
         setSelectedProjectId(projects[0]?.id || '');
         setPriority('High');
         onClose();
     };
 
-    const activeUser = users.find(u => u.color === selectedColor);
 
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] backdrop-blur-[6px]">
             <div
-                className={`w-[520px] rounded-3xl shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in duration-300 font-sans border border-white/10 relative group-modal`}
+                className={`w-[520px] rounded-2xl shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in duration-300 font-sans border border-white/10 relative group-modal`}
                 style={{
                     backgroundColor: '#16191D',
                 }}
@@ -113,10 +133,10 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                     className="absolute -bottom-20 -right-20 w-[400px] h-[400px] blur-[100px] rounded-full animate-pulse transition-all duration-1000 opacity-30"
                     style={{
                         backgroundColor:
-                            selectedColor === 'blue' ? '#3B82F6' :
-                                selectedColor === 'green' ? '#10B981' :
-                                    selectedColor === 'rose' ? '#F43F5E' :
-                                        selectedColor === 'indigo' ? '#6366F1' :
+                            derivedColor === 'blue' ? '#3B82F6' :
+                                derivedColor === 'green' ? '#10B981' :
+                                    derivedColor === 'rose' ? '#F43F5E' :
+                                        derivedColor === 'pink' ? '#EC4899' :
                                             '#F59E0B'
                     }}
                 ></div>
@@ -124,10 +144,10 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                     className="absolute -bottom-10 -right-10 w-[200px] h-[200px] blur-[60px] rounded-full opacity-20 transition-all duration-700"
                     style={{
                         backgroundColor:
-                            selectedColor === 'blue' ? '#3B82F6' :
-                                selectedColor === 'green' ? '#10B981' :
-                                    selectedColor === 'rose' ? '#F43F5E' :
-                                        selectedColor === 'indigo' ? '#6366F1' :
+                            derivedColor === 'blue' ? '#3B82F6' :
+                                derivedColor === 'green' ? '#10B981' :
+                                    derivedColor === 'rose' ? '#F43F5E' :
+                                        derivedColor === 'pink' ? '#EC4899' :
                                             '#F59E0B'
                     }}
                 ></div>
@@ -139,7 +159,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">
                             Create New Task
                         </div>
-                        <button onClick={onClose} className="text-gray-500 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-all active:scale-90">
+                        <button onClick={onClose} className="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all active:scale-90">
                             <X size={18} />
                         </button>
                     </div>
@@ -158,7 +178,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                             <div className="h-[1px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent mt-1"></div>
                         </div>
 
-                        {/* Assignee / Color Selector */}
+                        {/* Assignee Selection */}
                         <div className="space-y-3">
                             <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
                                 <span>Assign To</span>
@@ -171,14 +191,15 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                         .map((u) => (
                                             <button
                                                 key={u.id}
-                                                onClick={() => setSelectedColor(u.color)}
+                                                type="button"
+                                                onClick={() => setSelectedAssigneeId(u.id)}
                                                 className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-black transition-all transform active:scale-90 relative uppercase
                                                 ${u.color === 'blue' ? 'bg-[#3B82F6]' :
                                                         u.color === 'green' ? 'bg-[#10B981]' :
                                                             u.color === 'rose' ? 'bg-[#F43F5E]' :
-                                                                u.color === 'indigo' ? 'bg-[#6366F1]' :
+                                                                u.color === 'pink' ? 'bg-[#EC4899]' :
                                                                     'bg-[#F59E0B]'}
-                                                ${selectedColor === u.color ? 'ring-2 ring-white ring-offset-2 ring-offset-[#16191D] scale-110 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-110'}
+                                                ${selectedAssigneeId === u.id ? 'ring-2 ring-white ring-offset-2 ring-offset-[#16191D] scale-110 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-110'}
                                             `}
                                             >
                                                 {u.name?.charAt(0) || 'U'}
@@ -186,13 +207,16 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                         ))}
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[13px] font-black text-white tracking-tight uppercase italic">{activeUser?.name || 'Unassigned'}</span>
+                                    <span className="text-[13px] font-black text-white tracking-tight uppercase italic">
+                                        {users.find(u => u.id === selectedAssigneeId)?.name || 'Unassigned'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
+
                         {/* Meta Grid */}
-                        <div className="grid grid-cols-2 gap-3 bg-white/[0.02] p-4 rounded-xl border border-white/5 font-bold relative z-20">
+                        <div className="grid grid-cols-2 gap-3 bg-white/[0.02] p-4 rounded-lg border border-white/5 font-bold relative z-20">
                             <div className="space-y-1 relative">
                                 <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
                                     <CalendarIcon size={11} />
@@ -207,7 +231,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
 
                                 {/* Custom Calendar Popup */}
                                 {isCalendarOpen && (
-                                    <div className="relative mt-2 w-full bg-[#1A1D21] border border-white/10 rounded-2xl shadow-inner z-10 p-4 animate-in fade-in zoom-in duration-200">
+                                    <div className="absolute top-full left-0 mt-2 w-[280px] bg-[#1A1D21] border border-white/10 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] z-[150] p-4 animate-in fade-in zoom-in duration-200">
                                         <div className="flex justify-between items-center mb-4">
                                             <button
                                                 onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
@@ -236,17 +260,18 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
 
                                         <div className="grid grid-cols-7 gap-1">
                                             {generateDays().map((d, i) => {
-                                                const isSelected = d.date.toISOString().split('T')[0] === date;
-                                                const isToday = d.date.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                                                const dayStr = formatDateLocal(d.date);
+                                                const isSelected = dayStr === date;
+                                                const isToday = dayStr === todayStr;
 
                                                 return (
                                                     <button
                                                         key={i}
                                                         onClick={() => {
-                                                            setDate(d.date.toISOString().split('T')[0]);
+                                                            setDate(dayStr);
                                                             setIsCalendarOpen(false);
                                                         }}
-                                                        className={`text-[10px] aspect-square rounded-2xl flex items-center justify-center font-bold transition-all
+                                                        className={`text-[10px] aspect-square rounded-xl flex items-center justify-center font-bold transition-all
                                                             ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}
                                                             ${isSelected ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-400' : ''}
                                                             ${isToday && !isSelected ? 'border border-cyan-500/30' : ''}
@@ -277,7 +302,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                     </button>
 
                                     {isPriorityOpen && (
-                                        <div className="absolute top-full left-0 mt-2 w-36 bg-[#1A1D21] border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] z-[150] p-1.5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="absolute top-full left-0 mt-2 w-36 bg-[#1A1D21] border border-white/10 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] z-[150] p-1.5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                             {['Low', 'Mid', 'High'].map((p) => (
                                                 <button
                                                     key={p}
@@ -310,7 +335,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                         key={p.id}
                                         type="button"
                                         onClick={() => setSelectedProjectId(p.id)}
-                                        className={`relative p-3 rounded-2xl border transition-all duration-300 text-left flex flex-col gap-2 group/project overflow-hidden
+                                        className={`relative p-3 rounded-xl border transition-all duration-300 text-left flex flex-col gap-2 group/project overflow-hidden
                                                 ${String(selectedProjectId) === String(p.id)
                                                 ? 'bg-white/[0.1] border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.1)] ring-1 ring-cyan-500/20'
                                                 : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'}
@@ -345,7 +370,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                             </div>
                             <textarea
                                 placeholder="Add more details..."
-                                className="w-full bg-white/[0.02] text-gray-400 placeholder-gray-700 resize-none focus:outline-none text-xs font-bold p-4 rounded-2xl border border-white/5 min-h-[100px] focus:border-cyan-500/30 transition-all"
+                                className="w-full bg-white/[0.02] text-gray-400 placeholder-gray-700 resize-none focus:outline-none text-xs font-bold p-4 rounded-xl border border-white/5 min-h-[100px] focus:border-cyan-500/30 transition-all"
                                 rows={3}
                             />
                         </div>
@@ -355,17 +380,17 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                     <div className="flex gap-4 p-6 pt-0">
                         <button
                             onClick={onClose}
-                            className="flex-1 py-4 rounded-2xl text-xs font-bold text-gray-500 hover:bg-white/5 hover:text-gray-300 transition-all active:scale-95 border border-white/5"
+                            className="flex-1 py-4 rounded-xl text-xs font-bold text-gray-500 hover:bg-white/5 hover:text-gray-300 transition-all active:scale-95 border border-white/5"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className={`flex-1 py-4 rounded-2xl text-xs font-black transition-all shadow-xl active:scale-95 text-white uppercase tracking-widest
-                                    ${selectedColor === 'blue' ? 'bg-[#3B82F6] shadow-blue-500/20 hover:bg-blue-500' :
-                                    selectedColor === 'green' ? 'bg-[#10B981] shadow-emerald-500/20 hover:bg-emerald-500' :
-                                        selectedColor === 'rose' ? 'bg-[#F43F5E] shadow-rose-500/20 hover:bg-rose-500' :
-                                            selectedColor === 'indigo' ? 'bg-[#6366F1] shadow-indigo-500/20 hover:bg-indigo-500' :
+                            className={`flex-1 py-4 rounded-xl text-xs font-black transition-all shadow-xl active:scale-95 text-white uppercase tracking-widest
+                                    ${derivedColor === 'blue' ? 'bg-[#3B82F6] shadow-blue-500/20 hover:bg-blue-500' :
+                                    derivedColor === 'green' ? 'bg-[#10B981] shadow-emerald-500/20 hover:bg-emerald-500' :
+                                        derivedColor === 'rose' ? 'bg-[#F43F5E] shadow-rose-500/20 hover:bg-rose-500' :
+                                            derivedColor === 'pink' ? 'bg-[#EC4899] shadow-pink-500/20 hover:bg-pink-500' :
                                                 'bg-[#F59E0B] shadow-amber-500/20 hover:bg-[#D97706]'}
                                 `}
                         >

@@ -5,6 +5,18 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
 
     const linkedProject = projects.find(p => String(p.id) === String(event.projectId));
 
+    const getTypeColor = (type, fallbackColor) => {
+        const t = (type || '').toUpperCase();
+        const colors = {
+            'HACKATHON': 'from-pink-500 to-rose-500',
+            'WORKSHOP': 'from-purple-500 to-indigo-600',
+            'MEETUP': 'from-blue-400 to-cyan-500',
+            'CONFERENCE': 'from-amber-400 to-orange-500'
+        };
+        return colors[t] || fallbackColor;
+    };
+    const eventColor = getTypeColor(event.type, event.color);
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
             {/* Backdrop */}
@@ -17,11 +29,11 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
             <div className="relative w-full max-w-2xl bg-[#16191D] border border-white/10 rounded-[2.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden animate-in zoom-in-95 fade-in duration-300">
                 {/* Decorative Glow */}
                 <div
-                    className={`absolute -top-24 -right-24 w-64 h-64 blur-[80px] rounded-full opacity-30 bg-gradient-to-br ${event.color}`}
+                    className={`absolute -top-24 -right-24 w-64 h-64 blur-[80px] rounded-full opacity-30 bg-gradient-to-br ${eventColor}`}
                 ></div>
 
                 {/* Header Area */}
-                <div className={`h-24 w-full bg-gradient-to-r ${event.color} relative overflow-hidden`}>
+                <div className={`h-24 w-full bg-gradient-to-r ${eventColor} relative overflow-hidden`}>
                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
 
                     <div className="absolute top-6 left-8 flex items-center gap-3 z-10">
@@ -69,10 +81,25 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                     <div className="flex flex-col gap-6">
                         {/* Title & Date */}
                         <div>
-                            <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-[0.2em] mb-2.5">
-                                <Calendar size={14} />
-                                <span>{event.date} {event.toDate ? `— ${event.toDate}` : ''}</span>
-                            </div>
+                            {(() => {
+                                const getTypeTextColor = (type) => {
+                                    const t = (type || '').toUpperCase();
+                                    const colors = {
+                                        'HACKATHON': 'text-pink-500',
+                                        'WORKSHOP': 'text-purple-500',
+                                        'MEETUP': 'text-blue-400',
+                                        'CONFERENCE': 'text-amber-500'
+                                    };
+                                    return colors[t] || 'text-primary';
+                                };
+                                const eventTextColor = getTypeTextColor(event.type);
+                                return (
+                                    <div className={`flex items-center gap-2 ${eventTextColor} font-bold text-xs uppercase tracking-[0.2em] mb-2.5`}>
+                                        <Calendar size={14} />
+                                        <span>{event.date} {event.toDate ? `— ${event.toDate}` : ''}</span>
+                                    </div>
+                                );
+                            })()}
                             <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight uppercase tracking-tight italic">
                                 {event.title}
                             </h2>
@@ -106,7 +133,7 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                         {/* Building Objective Section */}
                         {event.buildingDescription && (
                             <div className="relative group">
-                                <div className={`absolute -inset-1 bg-gradient-to-r ${event.color} opacity-10 rounded-3xl blur transition duration-1000 group-hover:opacity-20`}></div>
+                                <div className={`absolute -inset-1 bg-gradient-to-r ${eventColor} opacity-10 rounded-3xl blur transition duration-1000 group-hover:opacity-20`}></div>
                                 <div className="relative p-6 bg-[#1A1D21] border border-white/5 rounded-3xl space-y-3">
                                     <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em]">
                                         <Sparkles size={14} />

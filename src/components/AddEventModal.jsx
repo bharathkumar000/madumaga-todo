@@ -92,16 +92,20 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     const handleSave = () => {
         if (!title.trim()) return;
 
-        const fromDateObj = new Date(fromDate);
-        const toDateObj = new Date(toDate);
+        const [fy, fm, fd] = fromDate.split('-').map(Number);
+        const fromDateObj = new Date(fy, fm - 1, fd);
+        const [ty, tm, td] = toDate.split('-').map(Number);
+        const toDateObj = new Date(ty, tm - 1, td);
 
         // Colors mapping based on type
         const colors = {
-            'HACKATHON': 'from-purple-500 to-indigo-600',
+            'HACKATHON': 'from-pink-500 to-rose-500',
             'MEETUP': 'from-blue-400 to-cyan-500',
-            'WORKSHOP': 'from-pink-500 to-rose-500',
+            'WORKSHOP': 'from-purple-500 to-pink-600',
             'CONFERENCE': 'from-amber-400 to-orange-500'
         };
+
+        const t = (type || '').toUpperCase();
 
         onSave({
             ...(eventToEdit || {}),
@@ -112,7 +116,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             type,
             attendees: 4, // Default team size
             image: eventToEdit?.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=400",
-            color: colors[type] || 'from-blue-500 to-indigo-600',
+            color: colors[t] || 'from-blue-500 to-pink-600',
             description,
             buildingDescription,
             projectId: projectId?.toString(),
@@ -141,7 +145,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             >
                 {/* Variant Ambient Glows */}
                 <div className="absolute -bottom-20 -right-20 w-[400px] h-[400px] blur-[100px] rounded-full animate-pulse transition-all duration-1000 opacity-30 bg-blue-600"></div>
-                <div className="absolute -bottom-10 -right-10 w-[200px] h-[200px] blur-[60px] rounded-full opacity-20 transition-all duration-700 bg-indigo-500"></div>
+                <div className="absolute -bottom-10 -right-10 w-[200px] h-[200px] blur-[60px] rounded-full opacity-20 transition-all duration-700 bg-pink-500"></div>
 
                 {/* Content Area */}
                 <div className="relative z-10 bg-gradient-to-br from-white/[0.02] to-transparent p-1">
@@ -166,7 +170,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                 className="w-full bg-transparent text-2xl font-black text-white placeholder-gray-600 border-none focus:ring-0 focus:outline-none transition-all"
                                 autoFocus
                             />
-                            <div className="h-[1px] w-full bg-gradient-to-r from-indigo-500/50 to-transparent mt-1"></div>
+                            <div className="h-[1px] w-full bg-gradient-to-r from-pink-500/50 to-transparent mt-1"></div>
                         </div>
 
                         {/* Meta Grid */}
@@ -215,7 +219,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                                     <button
                                                         key={i}
                                                         onClick={() => { setFromDate(formatDateLocal(d.date)); setIsFromCalendarOpen(false); }}
-                                                        className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:bg-indigo-400' : ''} ${isToday && !isSelected ? 'border border-indigo-500/30' : ''}`}
+                                                        className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
                                                     >
                                                         {d.day}
                                                     </button>
@@ -270,7 +274,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                                     <button
                                                         key={i}
                                                         onClick={() => { setToDate(formatDateLocal(d.date)); setIsToCalendarOpen(false); }}
-                                                        className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:bg-indigo-400' : ''} ${isToday && !isSelected ? 'border border-indigo-500/30' : ''}`}
+                                                        className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
                                                     >
                                                         {d.day}
                                                     </button>
@@ -314,7 +318,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                             <button
                                                 key={p.id}
                                                 onClick={() => { setProjectId(p.id.toString()); setIsProjectDropdownOpen(false); }}
-                                                className={`w-full px-4 py-2 text-left text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${String(projectId) === String(p.id) ? 'text-indigo-400 bg-indigo-500/5' : 'text-gray-400'}`}
+                                                className={`w-full px-4 py-2 text-left text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${String(projectId) === String(p.id) ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
                                             >
                                                 <span className="truncate">{p.name}</span>
                                                 {String(projectId) === String(p.id) && <Check size={12} />}
@@ -349,7 +353,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                             <button
                                                 key={t}
                                                 onClick={() => { setType(t); setIsTypeDropdownOpen(false); }}
-                                                className={`w-full px-4 py-2 text-left text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${type === t ? 'text-indigo-400 bg-indigo-500/5' : 'text-gray-400'}`}
+                                                className={`w-full px-4 py-2 text-left text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${type === t ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
                                             >
                                                 <span className="capitalize">{t.toLowerCase()}</span>
                                                 {type === t && <Check size={12} />}
@@ -412,7 +416,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                     <LinkIcon size={12} />
                                     <span>Important Links</span>
                                 </div>
-                                <button onClick={addLink} className="text-[10px] font-black text-indigo-400 flex items-center gap-1 hover:text-indigo-300">
+                                <button onClick={addLink} className="text-[10px] font-black text-pink-400 flex items-center gap-1 hover:text-pink-300">
                                     <Plus size={12} /> ADD LINK
                                 </button>
                             </div>
@@ -474,7 +478,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="flex-1 py-3 rounded-xl text-xs font-black transition-all shadow-xl active:scale-95 text-white bg-indigo-600 shadow-indigo-500/20 hover:bg-indigo-500"
+                                className="flex-1 py-3 rounded-xl text-xs font-black transition-all shadow-xl active:scale-95 text-white bg-pink-600 shadow-pink-500/20 hover:bg-pink-500"
                             >
                                 {eventToEdit ? 'Update Event' : 'Create Event'}
                             </button>
