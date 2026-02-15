@@ -1,72 +1,40 @@
-# MADU MAGA - Real-time Collaborative Task Management
+# MADU MAGA - Personal Task Experiment
 
-A professional, real-time collaborative task management system built for high-performance teams. This application features smooth drag-and-drop interactions, persistent team profiles, and live synchronization across all connected clients.
+A local development repository for exploring task organization and real-time syncing concepts. This project is intended for localhost experimentation and personal use only.
 
-## 🚀 Features
+## 🛠️ Project Goals
 
-- **Real-time Collaboration**: Powered by Firebase Firestore, every change is instantly synced across all users.
-- **Optimistic UI Updates**: Lag-free drag-and-drop experience using `@dnd-kit` with background synchronization.
-- **Organisation & Team Management**: Dedicated sidebar for team visibility, member-specific task filtering, and online status indicators.
-- **Dynamic Task Board**: Manage tasks across "In Progress", "Code Review", and "Upcoming" columns.
-- **Integrated Calendar**: Visual task scheduling with a custom-built glassmorphism calendar.
-- **Interactive Waiting List**: Drop zone for pending tasks with quick-action controls.
-- **Achievement & Events System**: Track team milestones and upcoming hackathons or meetings.
-- **Premium Aesthetics**: Clean, modern dark-mode UI with smooth micro-animations and GPU-accelerated transitions.
+- **Local Task Management**: Organizing personal tasks across different categories.
+- **Sync Exploration**: Testing real-time synchronization between local instances.
+- **UI Prototyping**: Experimenting with modern web design patterns and animations.
+- **Customization**: A sandbox for testing individual productivity workflows.
 
-## 📦 Dependencies
+## 📦 Core Stack
 
-The project relies on the following core technologies:
+- **Frontend**: React 18 with Vite for local development.
+- **Logic**: Custom hooks and state management for task tracking.
+- **Styling**: Tailwind CSS for rapid UI experimentation.
+- **Icons**: Lucide React for consistent visual elements.
 
-### Core Framework
-- **React 18**: Frontend library for building the user interface.
-- **Vite**: Ultra-fast build tool and development server.
+## � Getting Started (Local Development Only)
 
-### Backend & Sync
-- **Firebase SDK**: Handles Authentication and real-time Firestore database synchronization.
-
-### Interface & Experience
-- **@dnd-kit**: Performance-oriented drag-and-drop primitives for smooth task movement.
-- **Lucide React**: Comprehensive icon library for UI elements.
-- **date-fns**: Robust date manipulation and formatting.
-- **Tailwind CSS**: Utility-first CSS framework for modern styling.
-
-## 🛠️ Installation & Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/avnu112233-collab/madu-maga-todo.git
-   cd madu-maga-todo
-   ```
-
-2. **Install Dependencies**:
+1. **Install Dependencies**:
    ```bash
    npm install
    ```
 
-3. **Configure Environment Variables**:
-   Create a `.env` file in the root directory and add your Firebase configuration (see `.env.example` for the template):
+2. **Environment Configuration**:
+   Create a `.env` file based on the provided template for local service keys:
    ```bash
    cp .env.example .env
-   # Fill in your Firebase keys in the .env file
    ```
 
-4. **Run Development Server**:
+3. **Start Local Server**:
    ```bash
    npm run dev
    ```
+   Access the repository via `localhost:5173`.
 
-## 🏗️ Building for Production
+## ⚠️ Important Note
 
-To create an optimized production build:
-```bash
-npm run build
-```
-
-The output will be in the `dist/` directory, ready to be deployed to Firebase Hosting, Vercel, or Netlify.
-
-## 🔒 Security
-
-Ensure Firestore Security Rules are set to allow authenticated access:
-```javascript
-allow read, write: if request.auth != null;
-```
+This is a private, experimental repository. It is **not** optimized for public deployment and should only be run in a local development environment. All features are currently in a "local-first" testing phase.
