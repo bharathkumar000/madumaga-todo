@@ -68,7 +68,7 @@ const INITIAL_TASKS = [
 const USERS = [
     { id: 'bharathece2006@gmail.com', name: 'Bharath', color: 'blue' },
     { id: 'rishithsgowda13@gmail.com', name: 'Rishith', color: 'amber' },
-    { id: '3', name: 'Srinivas', color: 'green', password: '3' }
+    { id: 'vvce25cse0639@vvce.ac.in', name: 'Srinivas', color: 'green' }
 ];
 
 const INITIAL_PROJECTS = [
@@ -158,8 +158,25 @@ function App() {
 
     // 1. Auth Observer
     useEffect(() => {
+        const ALLOWED_EMAILS = [
+            'bharathece2006@gmail.com',
+            'rishithsgowda13@gmail.com',
+            'vvce25cse0639@vvce.ac.in',
+        ];
+
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // Security check: Only allow specific emails
+                const isAllowed = ALLOWED_EMAILS.includes(user.email);
+
+                if (!isAllowed) {
+                    console.error("Unauthorized access attempt:", user.email);
+                    await signOut(auth);
+                    setIsAuthenticated(false);
+                    setCurrentUser(null);
+                    return;
+                }
+
                 setIsAuthenticated(true);
                 // Listen to personal profile changes
                 const userRef = doc(db, 'users', user.uid);
