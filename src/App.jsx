@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { addDays } from 'date-fns';
+import React, { useState, useEffect, useCallback } from 'react';
+import { addDays, isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
@@ -110,7 +110,7 @@ const INITIAL_EVENTS = [
         type: "HACKATHON",
         attendees: 4,
         image: "https://images.unsplash.com/photo-1504384308090-c54be3855833?auto=format&fit=crop&q=80&w=400",
-        color: "from-purple-500 to-indigo-600",
+        color: "from-pink-500 to-rose-500",
         description: "Participating in the Stanford AI Safety Hackathon as a team. Focus on robust agentic alignment.",
         buildingDescription: "We are building an autonomous auditing system for LLM transaction logs to detect misalignment in real-time.",
         won: true,
@@ -185,9 +185,10 @@ function App() {
                         setCurrentUser({ id: user.uid, ...docSnap.data() });
                     } else {
                         // Create initial profile if it doesn't exist
+                        const knownUser = USERS.find(u => u.id === user.email);
                         const initialProfile = {
-                            name: user.displayName || user.email.split('@')[0],
-                            color: 'blue',
+                            name: knownUser?.name || user.displayName || user.email.split('@')[0],
+                            color: knownUser?.color || 'blue',
                             bio: '',
                             id: user.uid
                         };
@@ -242,6 +243,43 @@ function App() {
         };
     }, [currentUser?.id]);
 
+    // 3. Auto-Categorize Tasks based on Date (Healing Logic)
+    useEffect(() => {
+        if (!tasks || tasks.length === 0) return;
+
+        const today = startOfDay(new Date());
+
+        tasks.forEach(async (task) => {
+            // Only sync incomplete tasks with dates
+            if (!task.date || task.completed) return;
+
+            try {
+                // Try to parse the date from rawDate or date string
+                const taskDate = task.rawDate ? startOfDay(new Date(task.rawDate)) : startOfDay(new Date(task.date));
+                if (isNaN(taskDate.getTime())) return;
+
+                let expectedStatus = 'UPCOMING';
+                if (isBefore(taskDate, today)) {
+                    expectedStatus = 'DELAYED';
+                } else if (isSameDay(taskDate, today)) {
+                    expectedStatus = 'TODAY';
+                } else if (isBefore(taskDate, endOfWeek(today, { weekStartsOn: 0 }))) {
+                    expectedStatus = 'THIS_WEEK';
+                } else if (isBefore(taskDate, endOfMonth(today))) {
+                    expectedStatus = 'THIS_MONTH';
+                }
+
+                // If status is irrelevant or wrong, sync it
+                const syncableStatuses = ['DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'WAITING', 'todo', 'NO_DUE_DATE', ''];
+                if (task.status !== expectedStatus && syncableStatuses.includes(task.status || '')) {
+                    await updateDoc(doc(db, 'tasks', task.id), { status: expectedStatus });
+                }
+            } catch (e) {
+                // Silently fail if date parsing fails
+            }
+        });
+    }, [tasks.length, currentView]); // Re-sync on length change or view change
+
     // View Persistence (Simplified)
     useEffect(() => {
         const savedView = localStorage.getItem('todo_currentView');
@@ -285,20 +323,14 @@ function App() {
                 await updateDoc(taskRef, taskData);
                 setEditingTask(null);
             } else {
-                const userColor = currentUser?.color || 'blue';
-                const colorClasses = {
-                    blue: 'bg-blue-600/90 from-blue-600 to-indigo-700 text-white',
-                    green: 'bg-emerald-600/90 from-emerald-600 to-teal-700 text-white',
-                    yellow: 'bg-amber-500/90 from-amber-500 to-orange-600 text-white'
-                };
-
                 await addDoc(collection(db, 'tasks'), {
                     ...taskData,
                     status: taskData.status || "todo",
-                    userId: currentUser?.id,
+                    userId: currentUser?.id, // Creator
+                    assignedTo: taskData.assignedTo || currentUser?.id,
                     creatorName: currentUser?.name || 'Bharath',
                     creatorInitial: (currentUser?.name || 'B').charAt(0),
-                    color: taskData.color || colorClasses[userColor] || colorClasses.blue,
+                    color: taskData.color || 'blue',
                     isGradient: true,
                     completed: false,
                     createdAt: new Date()
@@ -374,7 +406,7 @@ function App() {
         }
     };
 
-    const handleToggleTask = async (taskId) => {
+    const handleToggleTask = useCallback(async (taskId) => {
         try {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
@@ -383,17 +415,17 @@ function App() {
         } catch (error) {
             console.error("Error toggling task:", error);
         }
-    };
+    }, [tasks]);
 
-    const handleDeleteTask = async (taskId) => {
+    const handleDeleteTask = useCallback(async (taskId) => {
         try {
             await deleteDoc(doc(db, 'tasks', taskId));
         } catch (error) {
             console.error("Error deleting task:", error);
         }
-    };
+    }, []);
 
-    const handleDuplicateTask = async (taskId) => {
+    const handleDuplicateTask = useCallback(async (taskId) => {
         try {
             const taskToDuplicate = tasks.find(task => task.id === taskId);
             if (!taskToDuplicate) return;
@@ -406,16 +438,16 @@ function App() {
         } catch (error) {
             console.error("Error duplicating task:", error);
         }
-    };
+    }, [tasks]);
 
-    const handleUpdateTask = async (taskId, updates) => {
+    const handleUpdateTask = useCallback(async (taskId, updates) => {
         try {
             const taskRef = doc(db, 'tasks', taskId);
             await updateDoc(taskRef, updates);
         } catch (error) {
             console.error("Error updating task:", error);
         }
-    };
+    }, []);
 
     const handleDeleteProject = async (projectId) => {
         try {
@@ -449,11 +481,18 @@ function App() {
             onProfileClick={() => setIsProfileModalOpen(true)}
             currentUser={currentUser}
             users={allUsers}
-            onMemberClick={(memberId) => { setSelectedMemberId(memberId); setCurrentView('tasks'); }}
+            onMemberClick={(memberId) => {
+                setSelectedMemberId(memberId);
+                // Switch to a task-centric view if not already in one
+                if (['events', 'achievements', 'projects'].includes(currentView)) {
+                    setCurrentView('dashboard');
+                }
+            }}
         >
             {currentView === 'events' ? (
                 <EventsView
                     events={events}
+                    projects={projects}
                     onAddEvent={() => setIsEventModalOpen(true)}
                     onEventClick={handleEventClick}
                 />
