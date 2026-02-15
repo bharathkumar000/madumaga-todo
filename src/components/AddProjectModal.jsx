@@ -16,55 +16,59 @@ const AddProjectModal = ({ isOpen, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] backdrop-blur-[2px]">
-            <div className="bg-[#28292C] w-[450px] rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 font-sans">
-                {/* Header */}
-                <div className="flex justify-end items-center px-4 py-3">
-                    <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded hover:bg-white/10 transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] backdrop-blur-[6px]">
+            <div
+                className="w-[520px] rounded-[2.5rem] shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in duration-300 font-sans border border-white/10 relative"
+                style={{ backgroundColor: '#16191D' }}
+            >
+                {/* Variant Ambient Glows */}
+                <div className="absolute -bottom-20 -right-20 w-[400px] h-[400px] blur-[100px] rounded-full animate-pulse transition-all duration-1000 opacity-30 bg-blue-600"></div>
 
-                <div className="px-6 pb-6">
-                    {/* Title Input */}
-                    <div className="mb-6">
-                        <input
-                            type="text"
-                            placeholder="Add project title"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full bg-transparent text-2xl text-[#E8EAED] placeholder-[#9AA0A6] border-b border-gray-600 focus:border-[#8AB4F8] focus:outline-none pb-2 font-normal transition-colors"
-                            autoFocus
-                        />
+                {/* Content Area */}
+                <div className="relative z-10 bg-gradient-to-br from-white/[0.02] to-transparent p-1">
+                    {/* Header */}
+                    <div className="flex justify-between items-center p-4 border-b border-white/5">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">
+                            New Project
+                        </div>
+                        <button onClick={onClose} className="text-gray-500 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-all active:scale-90">
+                            <X size={18} />
+                        </button>
                     </div>
 
-                    {/* Status Selection */}
-                    <div className="flex gap-2 mb-6">
-                        {['Planning', 'In Progress', 'Active', 'Completed'].map((type) => (
+                    <div className="px-8 pb-8 pt-6 space-y-8">
+                        {/* Title Input */}
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Project Name"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="w-full bg-transparent text-3xl font-black text-white placeholder-gray-600 border-none focus:ring-0 focus:outline-none transition-all uppercase italic tracking-tight"
+                                autoFocus
+                            />
+                            <div className="h-[1px] w-full bg-gradient-to-r from-blue-500/50 to-transparent mt-2"></div>
+                        </div>
+
+
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 pt-4">
                             <button
-                                key={type}
-                                onClick={() => setStatus(type)}
-                                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${status === type
-                                    ? 'bg-[#8AB4F8] text-[#202124]'
-                                    : 'bg-[#3C4043] text-[#E8EAED] hover:bg-[#4A4E54]'
-                                    }`}
+                                onClick={onClose}
+                                className="flex-1 py-4 rounded-2xl text-xs font-bold text-gray-500 hover:bg-white/5 hover:text-gray-300 transition-all active:scale-95 border border-white/5"
                             >
-                                {type}
+                                Cancel
                             </button>
-                        ))}
+                            <button
+                                onClick={handleSave}
+                                disabled={!title.trim()}
+                                className="flex-1 py-4 rounded-2xl text-xs font-black transition-all shadow-xl active:scale-95 text-white bg-blue-600 shadow-blue-500/20 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest"
+                            >
+                                Create Project
+                            </button>
+                        </div>
                     </div>
-
-                </div>
-
-                {/* Footer */}
-                <div className="flex justify-end items-center px-6 py-4 bg-[#1F1F1F] border-t border-gray-800">
-                    <button
-                        onClick={handleSave}
-                        disabled={!title.trim()}
-                        className="bg-[#8AB4F8] hover:bg-[#AECBFA] text-[#202124] px-6 py-2 rounded-md font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Save
-                    </button>
                 </div>
             </div>
         </div>
