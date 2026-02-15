@@ -1,29 +1,34 @@
 // src/components/DashboardShell.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import TaskBoard from './TaskBoard';
 import CalendarGrid from './CalendarGrid';
 import ProjectsView from './ProjectsView';
 import ProjectDetailView from './ProjectDetailView';
 import TasksView from './TasksView';
 import TaskWaitingList from './TaskWaitingList';
+
+const MemoizedTaskBoard = React.memo(TaskBoard);
+const MemoizedCalendarGrid = React.memo(CalendarGrid);
+const MemoizedProjectsView = React.memo(ProjectsView);
+const MemoizedTasksView = React.memo(TasksView);
+const MemoizedTaskWaitingList = React.memo(TaskWaitingList);
 import {
     DndContext,
     DragOverlay,
-    closestCorners,
+    rectIntersection,
     PointerSensor,
+    KeyboardSensor,
     useSensor,
     useSensors,
     defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
 import { ChevronLeft, Target, Calendar, CheckCircle2, PlayCircle, Clock, Trash2, Folder } from 'lucide-react';
-import { arrayMove } from '@dnd-kit/sortable';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth, isAfter } from 'date-fns';
 
-// INITIAL_TASKS moved to App.jsx
-
 const dropAnimation = {
-    duration: 200,
-    easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+    duration: 150,
+    easing: 'ease-out',
     sideEffects: defaultDropAnimationSideEffects({
         styles: {
             active: {
@@ -34,36 +39,41 @@ const dropAnimation = {
 };
 
 const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, selectedMemberId, onClearMemberFilter, allUsers }) => {
-    // const [tasks, setTasks] = useState(INITIAL_TASKS); // Moved to App.jsx
     const [activeTask, setActiveTask] = useState(null);
     const [activeProject, setActiveProject] = useState(null);
 
+    const getRealId = useCallback((id) => {
+        if (!id) return id;
+        const idStr = id.toString();
+        if (idStr.startsWith('waiting-')) return idStr.replace('waiting-', '');
+        if (idStr.startsWith('board-')) return idStr.replace('board-', '');
+        if (idStr.startsWith('calendar-')) return idStr.replace('calendar-', '');
+        return idStr;
+    }, []);
+
     // Resizing State for Right Sidebar
-    const [rightSidebarWidth, setRightSidebarWidth] = useState(320); // Default w-80
+    const [rightSidebarWidth, setRightSidebarWidth] = useState(320); // Width increased to match reference pic
     const [isResizing, setIsResizing] = useState(false);
     const sidebarRef = useRef(null);
 
-    const startResizing = (e) => {
+    const startResizing = useCallback((e) => {
         e.preventDefault(); // Prevent text selection
         setIsResizing(true);
-    };
+    }, []);
 
-    const stopResizing = () => {
+    const stopResizing = useCallback(() => {
         setIsResizing(false);
-    };
+    }, []);
 
-    const resize = (mouseMoveEvent) => {
+    const resize = useCallback((mouseMoveEvent) => {
         if (isResizing) {
-            // Calculate new width: Window Width - Mouse X
-            // Note: This logic assumes sidebar is stuck to the right
             const startX = mouseMoveEvent.clientX;
             const newWidth = window.innerWidth - startX;
-
-            if (newWidth > 200 && newWidth < 600) { // Min 200px, Max 600px
+            if (newWidth > 200 && newWidth < 600) {
                 setRightSidebarWidth(newWidth);
             }
         }
-    };
+    }, [isResizing]);
 
     useEffect(() => {
         window.addEventListener("mousemove", resize);
@@ -76,7 +86,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
     const [selectedProjectId, setSelectedProjectId] = useState(null);
 
-    // Reset project selection when view changes to anything other than projects
+    // Reset project selection when view changes
     useEffect(() => {
         if (currentView !== 'projects') {
             setSelectedProjectId(null);
@@ -86,19 +96,24 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5, // Lower for faster pickup
+                distance: 8, // Slightly higher to prevent accidental drags
             },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
         })
     );
 
     const handleDragStart = (event) => {
         const { active } = event;
+        document.body.classList.add('is-dragging');
+        const realId = getRealId(active.id);
         if (active.data.current?.type === 'Task') {
-            const task = tasks.find(t => t.id === active.id);
+            const task = tasks.find(t => t.id === realId);
             setActiveTask(task);
             setActiveProject(null);
         } else if (active.data.current?.type === 'Project') {
-            const project = projects.find(p => p.id === active.id);
+            const project = projects.find(p => p.id === realId);
             setActiveProject(project);
             setActiveTask(null);
         }
@@ -111,7 +126,10 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
         const activeId = active.id;
         const overId = over.id;
 
-        if (activeId === overId) return;
+        const realActiveId = getRealId(activeId);
+        const realOverId = getRealId(overId);
+
+        if (realActiveId === realOverId) return;
 
         const isActiveTask = active.data.current?.type === 'Task';
         const isOverTask = over.data.current?.type === 'Task';
@@ -121,8 +139,8 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
         // Project Reordering
         if (isActiveProject && isOverProject) {
             setProjects((items) => {
-                const oldIndex = items.findIndex((i) => i.id === activeId);
-                const newIndex = items.findIndex((i) => i.id === overId);
+                const oldIndex = items.findIndex((i) => i.id === realActiveId);
+                const newIndex = items.findIndex((i) => i.id === realOverId);
                 return arrayMove(items, oldIndex, newIndex);
             });
             return;
@@ -170,7 +188,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     newStatus = 'DELAYED';
                 } else if (isSameDay(taskDate, today)) {
                     newStatus = 'TODAY';
-                } else if (isBefore(taskDate, endOfWeek(today, { weekStartsOn: 1 }))) {
+                } else if (isBefore(taskDate, endOfWeek(today, { weekStartsOn: 0 }))) {
                     newStatus = 'THIS_WEEK';
                 } else if (isBefore(taskDate, endOfMonth(today))) {
                     newStatus = 'THIS_MONTH';
@@ -185,12 +203,14 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     rawDate: newDateTime.toISOString()
                 };
 
+                const realActiveId = getRealId(active.id);
+
                 // Optimistic: update UI instantly
                 setTasks(prev => prev.map(t =>
-                    t.id === active.id ? { ...t, ...updates } : t
+                    t.id === realActiveId ? { ...t, ...updates } : t
                 ));
                 // Then sync to Firestore in background
-                onUpdateTask(active.id, updates);
+                onUpdateTask(realActiveId, updates);
 
             } catch (e) {
                 console.error("Failed to parse calendar drop", e);
@@ -201,8 +221,11 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             const validContainers = ['WAITING', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
 
             let targetStatus = overId;
+            const realOverId = getRealId(overId);
+            const realActiveId = getRealId(active.id);
+
             if (!validContainers.includes(overId)) {
-                const overTask = tasks.find(t => t.id === overId);
+                const overTask = tasks.find(t => t.id === realOverId);
                 if (overTask) targetStatus = overTask.status;
             }
 
@@ -225,7 +248,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     updates.time = '';
                     updates.rawDate = '';
                 } else if (targetStatus === 'DELAYED') {
-                    const task = tasks.find(t => t.id === active.id);
+                    const task = tasks.find(t => t.id === realActiveId);
                     if (!task?.date) {
                         const yesterday = new Date(today);
                         yesterday.setDate(today.getDate() - 1);
@@ -236,21 +259,32 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
                 // Optimistic: update UI instantly
                 setTasks(prev => prev.map(t =>
-                    t.id === active.id ? { ...t, ...updates } : t
+                    t.id === realActiveId ? { ...t, ...updates } : t
                 ));
                 // Then sync to Firestore in background
-                onUpdateTask(active.id, updates);
+                onUpdateTask(realActiveId, updates);
             }
         }
 
         setActiveTask(null);
         setActiveProject(null);
+        document.body.classList.remove('is-dragging');
     };
 
 
 
-    const waitingTasks = tasks.filter(t => t.status === 'WAITING' || t.status === 'todo' || (!t.date && !t.status));
-    const boardTasks = tasks.filter(t => t.status !== 'WAITING' && t.status !== 'todo' && (t.date || t.status));
+    const filteredTasks = useMemo(() => {
+        if (!selectedMemberId) return tasks;
+        return tasks.filter(t => t.assignedTo === selectedMemberId || t.userId === selectedMemberId);
+    }, [tasks, selectedMemberId]);
+
+    const waitingTasks = useMemo(() => {
+        return filteredTasks.filter(t => !t.completed);
+    }, [filteredTasks]);
+
+    const boardTasks = useMemo(() => {
+        return filteredTasks.filter(t => t.date || (t.status !== 'WAITING' && t.status !== 'todo' && t.status));
+    }, [filteredTasks]);
 
     return (
         <DndContext
@@ -258,18 +292,22 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
-            collisionDetection={closestCorners}
+            collisionDetection={rectIntersection}
         >
             <div className="flex flex-1 h-full w-full">
                 {/* Center Column: Board or Calendar */}
                 <div className="flex-1 bg-background overflow-hidden w-full flex flex-col">
                     {currentView === 'calendar' ? (
-                        <CalendarGrid
-                            tasks={boardTasks}
+                        <MemoizedCalendarGrid
+                            tasks={filteredTasks}
                             events={events}
+                            projects={projects}
                             onToggleTask={onToggleTask}
                             onDeleteTask={onDeleteTask}
                             onUpdateTask={onUpdateTask}
+                            selectedMemberId={selectedMemberId}
+                            onClearMemberFilter={onClearMemberFilter}
+                            allUsers={allUsers}
                         />
                     ) : currentView === 'projects' ? (
                         selectedProjectId ? (
@@ -278,70 +316,102 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                 tasks={tasks}
                                 onBack={() => setSelectedProjectId(null)}
                                 onToggleTask={onToggleTask}
+                                onDeleteProject={onDeleteProject}
                             />
                         ) : (
-                            <ProjectsView
+                            <MemoizedProjectsView
                                 projects={projects}
+                                tasks={tasks}
                                 onAddProject={onAddProject}
                                 onProjectClick={(id) => setSelectedProjectId(id)}
                                 onDeleteProject={onDeleteProject}
                             />
                         )
                     ) : currentView === 'tasks' ? (
-                        <TasksView tasks={tasks} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onDuplicateTask={onDuplicateTask} onEditTask={onEditTask} selectedMemberId={selectedMemberId} onClearMemberFilter={onClearMemberFilter} allUsers={allUsers} />
+                        <MemoizedTasksView tasks={filteredTasks} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onDuplicateTask={onDuplicateTask} onEditTask={onEditTask} selectedMemberId={selectedMemberId} onClearMemberFilter={onClearMemberFilter} allUsers={allUsers} />
                     ) : (
-                        <TaskBoard
-                            tasks={boardTasks}
+                        <MemoizedTaskBoard
+                            tasks={filteredTasks}
                             onToggleTask={onToggleTask}
                             onDeleteTask={onDeleteTask}
+                            onDuplicateTask={onDuplicateTask}
+                            onEditTask={onEditTask}
+                            selectedMemberId={selectedMemberId}
+                            onClearMemberFilter={onClearMemberFilter}
+                            allUsers={allUsers}
                         />
                     )}
                 </div>
 
-                {/* Right Sidebar: Waiting List */}
-                <aside
-                    ref={sidebarRef}
-                    className="flex-shrink-0 bg-gray-900 border-l border-gray-800 flex flex-col h-full bg-card/10 backdrop-blur-sm relative"
-                    style={{ width: rightSidebarWidth, transition: isResizing ? 'none' : 'width 0.2s ease' }}
-                >
-                    {/* Resize Handle */}
-                    <div
-                        onMouseDown={startResizing}
-                        className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-50 group hover:shadow-[0_0_10px_rgba(79,70,229,0.5)]"
+                {/* Right Sidebar: Waiting List - Hidden in tasks view */}
+                {currentView !== 'tasks' && (
+                    <aside
+                        ref={sidebarRef}
+                        className="flex-shrink-0 bg-gray-900 border-l border-gray-800 flex flex-col h-full bg-card/10 backdrop-blur-sm relative"
+                        style={{ width: rightSidebarWidth, transition: isResizing ? 'none' : 'width 0.2s ease' }}
                     >
-                        <div className="absolute top-0 left-[-2px] w-4 h-full opacity-0 group-hover:opacity-100" />
-                    </div>
+                        {/* Resize Handle */}
+                        <div
+                            onMouseDown={startResizing}
+                            className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-50 group hover:shadow-[0_0_10px_rgba(79,70,229,0.5)]"
+                        >
+                            <div className="absolute top-0 left-[-2px] w-4 h-full opacity-0 group-hover:opacity-100" />
+                        </div>
 
-                    <TaskWaitingList
-                        tasks={waitingTasks}
-                        onAddTask={onAddTask}
-                        onToggleTask={onToggleTask}
-                        onDeleteTask={onDeleteTask}
-                        onDuplicateTask={onDuplicateTask}
-                        onEditTask={onEditTask}
-                    />
-                </aside>
+                        <MemoizedTaskWaitingList
+                            tasks={waitingTasks}
+                            onAddTask={onAddTask}
+                            onToggleTask={onToggleTask}
+                            onDeleteTask={onDeleteTask}
+                            onDuplicateTask={onDuplicateTask}
+                            onEditTask={onEditTask}
+                            allUsers={allUsers}
+                        />
+                    </aside>
+                )}
             </div>
             <DragOverlay dropAnimation={dropAnimation}>
                 {activeTask ? (
                     <div className="w-[240px] pointer-events-none">
                         <div
-                            className={`relative px-2 py-1.5 rounded-xl border border-white/10 shadow-2xl overflow-hidden bg-[#16191D] scale-105`}
+                            className={`relative px-2 py-1.5 rounded-lg border border-white/10 shadow-2xl overflow-hidden bg-[#16191D] scale-105`}
                             style={{
-                                backgroundImage: `linear-gradient(135deg, ${activeTask.color?.includes('blue') ? 'rgba(59, 130, 246, 0.25)' :
-                                    activeTask.color?.includes('emerald') || activeTask.color?.includes('green') ? 'rgba(16, 185, 129, 0.25)' :
-                                        activeTask.color?.includes('amber') || activeTask.color?.includes('yellow') ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.05)'} 0%, rgba(22,25,29,0) 80%)`
+                                backgroundImage: (() => {
+                                    const assignee = allUsers.find(u => u.id === activeTask.assignedTo) || allUsers.find(u => u.id === activeTask.userId);
+                                    const c = assignee?.color || activeTask.color || 'blue';
+                                    const taskColor = c === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
+                                        c === 'green' ? 'rgba(16, 185, 129, 0.4)' :
+                                            (c === 'amber' || c === 'yellow') ? 'rgba(245, 158, 11, 0.4)' :
+                                                c === 'rose' ? 'rgba(244, 63, 94, 0.4)' :
+                                                    c === 'pink' ? 'rgba(236, 72, 153, 0.4)' :
+                                                        c === 'teal' ? 'rgba(20, 184, 166, 0.4)' :
+                                                            c === 'orange' ? 'rgba(249, 115, 22, 0.4)' :
+                                                                c === 'purple' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255,255,255,0.05)';
+                                    return `
+                                        radial-gradient(circle at top right, rgba(0,0,0,0.6) 0%, transparent 50%),
+                                        radial-gradient(circle at bottom right, ${taskColor} 0%, transparent 70%)
+                                    `;
+                                })()
                             }}
                         >
-                            {/* Ambient Glows scaled down */}
-                            <div
-                                className="absolute -top-10 -left-10 w-[120px] h-[120px] blur-[45px] rounded-full opacity-60"
-                                style={{
-                                    backgroundColor: activeTask.color?.includes('blue') ? '#3B82F6' :
-                                        activeTask.color?.includes('emerald') || activeTask.color?.includes('green') ? '#10B981' :
-                                            activeTask.color?.includes('amber') || activeTask.color?.includes('yellow') ? '#F59E0B' : '#8AB4F8'
-                                }}
-                            ></div>
+                            {/* Ambient Glows */}
+                            {(() => {
+                                const assignee = allUsers.find(u => u.id === activeTask.assignedTo) || allUsers.find(u => u.id === activeTask.userId);
+                                const c = assignee?.color || activeTask.color || 'blue';
+                                const glowColor = c === 'blue' ? '#3B82F6' : c === 'green' ? '#10B981' : (c === 'amber' || c === 'yellow') ? '#F59E0B' : c === 'rose' ? '#F43F5E' : c === 'pink' ? '#EC4899' : c === 'teal' ? '#14B8A6' : c === 'orange' ? '#F97316' : c === 'purple' ? '#A855F7' : '#8AB4F8';
+                                return (
+                                    <>
+                                        <div
+                                            className="absolute -top-10 -left-10 w-[120px] h-[120px] blur-[45px] rounded-full opacity-30"
+                                            style={{ backgroundColor: glowColor }}
+                                        ></div>
+                                        <div
+                                            className="absolute -bottom-10 -right-10 w-[150px] h-[150px] blur-[45px] rounded-full opacity-90"
+                                            style={{ backgroundColor: glowColor }}
+                                        ></div>
+                                    </>
+                                );
+                            })()}
 
                             <div className="relative z-10 p-1.5">
                                 <div className="flex justify-between items-start gap-2">
@@ -386,7 +456,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                             </div>
                                         )}
                                         <div className="flex items-center gap-1">
-                                            <div className="p-1 rounded-md bg-white/5 border border-white/5 text-gray-600">
+                                            <div className="p-1 rounded bg-white/5 border border-white/5 text-gray-600">
                                                 <Calendar size={10} strokeWidth={3} />
                                             </div>
                                             <div className="p-1 rounded-md bg-white/5 border border-white/5 text-gray-600">
@@ -398,20 +468,23 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
                                 <div className="flex items-center gap-1.5 mt-2">
                                     <div
-                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-white/20"
+                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-white/20 shadow-lg"
                                         style={{
-                                            background:
-                                                activeTask.color === 'blue' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' :
-                                                    activeTask.color === 'green' ? 'linear-gradient(135deg, #10B981, #059669)' :
-                                                        activeTask.color === 'amber' ? 'linear-gradient(135deg, #F59E0B, #D97706)' :
-                                                            activeTask.color === 'rose' ? 'linear-gradient(135deg, #F43F5E, #E11D48)' :
-                                                                activeTask.color === 'indigo' ? 'linear-gradient(135deg, #6366F1, #4F46E5)' :
-                                                                    'linear-gradient(135deg, #3B82F6, #1D4ED8)'
+                                            background: (() => {
+                                                const assignee = allUsers.find(u => u.id === activeTask.assignedTo || u.id === activeTask.userId);
+                                                const c = assignee?.color || 'blue';
+                                                return c === 'blue' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' :
+                                                    c === 'green' ? 'linear-gradient(135deg, #10B981, #059669)' :
+                                                        c === 'amber' || c === 'yellow' ? 'linear-gradient(135deg, #F59E0B, #D97706)' :
+                                                            c === 'rose' ? 'linear-gradient(135deg, #F43F5E, #E11D48)' :
+                                                                c === 'pink' ? 'linear-gradient(135deg, #EC4899, #BE185D)' :
+                                                                    'linear-gradient(135deg, #3B82F6, #1D4ED8)';
+                                            })()
                                         }}
                                     >
-                                        {activeTask.creatorInitial || 'B'}
+                                        {(allUsers.find(u => u.id === activeTask.assignedTo || u.id === activeTask.userId)?.name?.charAt(0) || activeTask.creatorInitial || 'B')?.toUpperCase()}
                                     </div>
-                                    <span className="text-[8px] font-black px-1 py-0.5 rounded-md uppercase tracking-[0.1em] border border-white/5 bg-white/5 text-gray-400">
+                                    <span className="text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-[0.1em] border border-white/5 bg-white/5 text-gray-400">
                                         {activeTask.tag || 'TASK'}
                                     </span>
                                 </div>
@@ -420,18 +493,18 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     </div>
                 ) : activeProject ? (
                     <div className="w-[320px] pointer-events-none">
-                        <div className="bg-[#1C1F26] p-6 rounded-xl border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.8)] rotate-2 scale-105 transition-transform overflow-hidden relative">
+                        <div className="bg-[#1C1F26] p-4 rounded-lg border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.8)] rotate-2 scale-105 transition-transform overflow-hidden relative">
                             {/* Ambient Project Glow */}
-                            <div className="absolute -top-10 -right-10 w-[150px] h-[150px] bg-blue-500/20 blur-[50px] rounded-full" />
+                            <div className="absolute -top-10 -right-10 w-[150px] h-[150px] bg-[#4F46E5]/20 blur-[50px] rounded-full" />
                             <div className="flex justify-between items-start mb-4 relative z-10">
-                                <div className="p-3 bg-gray-800 rounded-lg text-blue-400">
+                                <div className="p-3 bg-gray-800 rounded-lg text-[#4F46E5]">
                                     <Folder size={24} />
                                 </div>
                             </div>
                             <h3 className="font-black text-xl mb-1 text-white relative z-10 tracking-tight uppercase">{activeProject.name}</h3>
                             <p className="text-sm text-gray-400 mb-4 relative z-10">{activeProject.tasks} active tasks</p>
                             <div className="flex items-center justify-between pt-4 border-t border-gray-800 relative z-10">
-                                <span className="text-[10px] font-black px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-widest">{activeProject.status}</span>
+                                <span className="text-[10px] font-black px-2 py-1 rounded bg-[#4F46E5]/10 text-[#4F46E5] border border-[#4F46E5]/20 uppercase tracking-widest">{activeProject.status}</span>
                             </div>
                         </div>
                     </div>
