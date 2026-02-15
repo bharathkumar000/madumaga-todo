@@ -1,10 +1,10 @@
 // src/components/ProjectsView.jsx
 import React from 'react';
-import { Folder, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Folder, MoreHorizontal, Trash2, Plus } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const ProjectCard = ({ project, onClick, onDelete }) => {
+const ProjectCard = ({ project, onClick, onDelete, taskCount }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: project.id,
         data: { type: 'Project', project }
@@ -20,7 +20,7 @@ const ProjectCard = ({ project, onClick, onDelete }) => {
             <div
                 ref={setNodeRef}
                 style={style}
-                className="bg-[#1C1F26]/20 p-6 rounded-xl border border-dashed border-gray-700 h-[200px]"
+                className="bg-[#1C1F26]/20 p-6 rounded-3xl border border-dashed border-gray-700 h-[220px]"
             />
         );
     }
@@ -29,68 +29,65 @@ const ProjectCard = ({ project, onClick, onDelete }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className="bg-[#1C1F26] p-6 rounded-xl border border-gray-800 hover:border-gray-700 transition-all hover:shadow-lg group"
+            onClick={() => onClick(project.id)}
+            className="group relative rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-[#0B0D10] via-[#0B0D10] to-[#4F46E5]/10 border border-white/5 hover:border-[#4F46E5]/30 transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.8)] cursor-pointer hover:-translate-y-1 active:scale-[0.98] p-7 h-full flex flex-col"
         >
-            <div className="flex justify-between items-start mb-4">
+            {/* Ambient Project Glow */}
+            <div className="absolute -top-24 -right-24 w-64 h-64 blur-[80px] rounded-full opacity-0 group-hover:opacity-40 bg-[#4F46E5] transition-opacity duration-700"></div>
+
+            <div className="relative z-10 flex items-center gap-4 mb-6">
                 <div
                     {...listeners}
                     {...attributes}
-                    className="p-3 bg-gray-800 rounded-lg group-hover:bg-gray-700 transition-colors cursor-grab active:cursor-grabbing"
+                    className="p-2.5 bg-white/5 rounded-xl group-hover:bg-[#4F46E5]/10 transition-all cursor-grab active:cursor-grabbing border border-white/5 group-hover:border-[#4F46E5]/20 shrink-0"
                 >
-                    <Folder size={24} className="text-blue-400" />
+                    <Folder size={20} className="text-[#4F46E5]" />
                 </div>
-                <div className="flex gap-2">
-                    <button
-                        className="text-gray-500 hover:text-rose-400 p-1 rounded-lg hover:bg-rose-500/10 transition-all"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(project.id);
-                        }}
-                    >
-                        <Trash2 size={18} />
-                    </button>
-                </div>
+                <h3 className="text-xl font-black text-white leading-tight uppercase tracking-tight italic group-hover:text-[#4F46E5] transition-colors line-clamp-2">
+                    {project.name}
+                </h3>
             </div>
-            <div onClick={() => onClick(project.id)} className="cursor-pointer">
-                <h3 className="font-semibold text-lg mb-1">{project.name}</h3>
-                <p className="text-sm text-gray-400 mb-4">{project.tasks} active tasks</p>
-            </div>
-            <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-800">
-                <span className="text-xs font-medium px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{project.status}</span>
-                <div className="flex -space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-purple-500 border-2 border-[#1C1F26]" />
-                    <div className="w-6 h-6 rounded-full bg-teal-500 border-2 border-[#1C1F26]" />
+
+            <div className="flex-1 relative z-10">
+                <div className="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase tracking-widest bg-white/5 w-fit px-3 py-1 rounded-full border border-white/5 group-hover:border-[#4F46E5]/10 group-hover:bg-[#4F46E5]/5">
+                    <span className="text-[#4F46E5]">{taskCount}</span>
+                    <span>Active Tasks</span>
                 </div>
             </div>
         </div>
     );
 };
 
-const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject }) => {
+const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject, tasks = [] }) => {
 
     return (
         <div className="flex flex-col h-full bg-[#0B0D10] text-white p-6">
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold flex items-center gap-3">
-                    <Folder className="text-primary w-8 h-8" /> Projects
+                    <Folder className="text-[#4F46E5] w-8 h-8" /> Projects
                 </h2>
                 <button
                     onClick={onAddProject}
-                    className="py-2.5 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20 transition-all active:scale-95 group"
+                    className="py-2.5 px-6 rounded-xl bg-[#4F46E5] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-[#4F46E5]/20 transition-all active:scale-95 group"
                 >
-                    ADD PROJECTS
+                    <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+                    <span>ADD PROJECTS</span>
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <SortableContext items={projects.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                    {projects && projects.map(project => (
-                        <ProjectCard
-                            key={project.id}
-                            project={project}
-                            onClick={onProjectClick}
-                            onDelete={onDeleteProject}
-                        />
-                    ))}
+                    {projects && projects.map(project => {
+                        const taskCount = tasks.filter(t => t.projectName === project.name && !t.completed).length;
+                        return (
+                            <ProjectCard
+                                key={project.id}
+                                project={project}
+                                taskCount={taskCount}
+                                onClick={onProjectClick}
+                                onDelete={onDeleteProject}
+                            />
+                        );
+                    })}
                 </SortableContext>
             </div>
         </div>
