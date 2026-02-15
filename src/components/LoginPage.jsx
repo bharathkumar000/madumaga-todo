@@ -46,7 +46,7 @@ const LoginPage = ({ onLogin, users }) => {
                     <div className="text-center space-y-2">
                         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white text-black font-bold text-2xl mb-2 shadow-lg shadow-white/10">✓</div>
                         <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                            MADU MAGA
+                            MADUMAGA🔥
                         </h1>
                         <p className="text-gray-500 text-sm font-medium">Welcome back, Please sign in</p>
                     </div>

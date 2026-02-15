@@ -1,4 +1,4 @@
-# MADU MAGA - Personal Task Experiment
+# MADUMAGA🔥
 
 A local development repository for exploring task organization and real-time syncing concepts. This project is intended for localhost experimentation and personal use only.
 
@@ -16,7 +16,7 @@ A local development repository for exploring task organization and real-time syn
 - **Styling**: Tailwind CSS for rapid UI experimentation.
 - **Icons**: Lucide React for consistent visual elements.
 
-## � Getting Started (Local Development Only)
+## 🚀 Getting Started (Local Development Only)
 
 1. **Install Dependencies**:
    ```bash

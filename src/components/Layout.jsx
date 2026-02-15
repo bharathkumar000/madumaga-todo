@@ -46,7 +46,7 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                 <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
                     <div className="mb-3 flex items-center gap-2 px-2">
                         <div className="w-6 h-6 rounded-md bg-white text-black flex items-center justify-center font-bold">✓</div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">MADU MAGA</h1>
+                        <h1 className="text-xl font-bold text-white tracking-tight">MADUMAGA🔥</h1>
                     </div>
 
                     {currentUser && (
