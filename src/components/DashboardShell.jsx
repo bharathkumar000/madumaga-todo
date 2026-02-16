@@ -15,12 +15,12 @@ const MemoizedTaskWaitingList = React.memo(TaskWaitingList);
 import {
     DndContext,
     DragOverlay,
-    rectIntersection,
     PointerSensor,
     KeyboardSensor,
     useSensor,
     useSensors,
-    defaultDropAnimationSideEffects
+    defaultDropAnimationSideEffects,
+    closestCorners
 } from '@dnd-kit/core';
 import { ChevronLeft, Target, Calendar, CheckCircle2, PlayCircle, Clock, Trash2, Folder } from 'lucide-react';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -150,7 +150,8 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
         // Moving Task over Task (reorder only, no Firestore write needed for order)
         if (isActiveTask && isOverTask) {
-            if (currentView === 'calendar') return;
+            // Only block if both are calendar tasks (no reordering in calendar)
+            if (currentView === 'calendar' && String(overId).startsWith('calendar-')) return;
             // We no longer setTasks here. Status changes happen in handleDragEnd.
         }
 
@@ -279,7 +280,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
     }, [tasks, selectedMemberId]);
 
     const waitingTasks = useMemo(() => {
-        return filteredTasks.filter(t => !t.completed);
+        return filteredTasks.filter(t => !t.completed && !t.date);
     }, [filteredTasks]);
 
     const boardTasks = useMemo(() => {
@@ -292,7 +293,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
-            collisionDetection={rectIntersection}
+            collisionDetection={closestCorners}
         >
             <div className="flex flex-1 h-full w-full">
                 {/* Center Column: Board or Calendar */}
