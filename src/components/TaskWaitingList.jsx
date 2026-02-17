@@ -158,7 +158,7 @@ const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, on
     });
 
     return (
-        <div className="flex flex-col h-full p-2 bg-[#0D1117]">
+        <div ref={setNodeRef} className="flex flex-col h-full p-2 bg-[#0D1117]">
             <div className="flex items-center justify-between mb-4 px-2">
                 <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center">
@@ -172,7 +172,6 @@ const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, on
             </div>
 
             <div
-                ref={setNodeRef}
                 className="flex-1 overflow-y-auto px-2 custom-scrollbar transition-colors flex flex-col gap-3"
             >
                 <SortableContext items={tasks.map(t => `waiting-${t.id}`)} strategy={verticalListSortingStrategy}>
