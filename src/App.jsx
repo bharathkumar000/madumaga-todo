@@ -517,6 +517,7 @@ function App() {
                     selectedMemberId={selectedMemberId}
                     onClearMemberFilter={() => setSelectedMemberId(null)}
                     allUsers={allUsers}
+                    currentUser={currentUser}
                 />
             )}
             <AddTaskModal
