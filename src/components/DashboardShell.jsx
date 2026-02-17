@@ -38,7 +38,7 @@ const dropAnimation = {
     }),
 };
 
-const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, selectedMemberId, onClearMemberFilter, allUsers }) => {
+const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser }) => {
     const [activeTask, setActiveTask] = useState(null);
     const [activeProject, setActiveProject] = useState(null);
 
@@ -318,6 +318,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                 onBack={() => setSelectedProjectId(null)}
                                 onToggleTask={onToggleTask}
                                 onDeleteProject={onDeleteProject}
+                                currentUser={currentUser}
                             />
                         ) : (
                             <MemoizedProjectsView
