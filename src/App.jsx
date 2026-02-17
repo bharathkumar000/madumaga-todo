@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { addDays, isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth } from 'date-fns';
-import { auth, db } from './firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { supabase } from './supabase';
 
 // Components
 import Layout from './components/Layout';
@@ -21,122 +19,10 @@ const getTodayStr = (offset = 0) => {
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-const INITIAL_TASKS = [
-    {
-        id: '1',
-        title: 'Design System Review',
-        projectName: 'Website Redesign',
-        status: 'SCHEDULED',
-        date: getTodayStr(0),
-        time: '11:00 AM',
-        tag: 'DESIGN',
-        userId: '1',
-        creatorName: 'Bharath',
-        creatorInitial: 'B',
-        color: 'bg-blue-600/90 from-blue-600 to-indigo-700 text-white',
-        priority: 'High',
-        isGradient: true
-    },
-    {
-        id: '2',
-        title: 'Client Meeting Preparation',
-        projectName: 'Marketing Campaign',
-        status: 'WAITING',
-        tag: 'MEETING',
-        userId: '2',
-        creatorName: 'Rishith',
-        creatorInitial: 'R',
-        color: 'bg-amber-500/90 from-amber-500 to-orange-600 text-white',
-        priority: 'Mid',
-        isGradient: true
-    },
-    {
-        id: '3',
-        title: 'Fix Layout Bug on Mobile',
-        projectName: 'Mobile App',
-        status: 'WAITING',
-        tag: 'DEV',
-        userId: '3',
-        creatorName: 'Srinivas',
-        creatorInitial: 'S',
-        color: 'bg-emerald-600/90 from-emerald-600 to-teal-700 text-white',
-        priority: 'Low',
-        isGradient: true
-    }
-];
-
 const USERS = [
     { id: 'bharathece2006@gmail.com', name: 'Bharath', color: 'blue' },
     { id: 'rishithsgowda13@gmail.com', name: 'Rishith', color: 'amber' },
     { id: 'vvce25cse0639@vvce.ac.in', name: 'Srinivas', color: 'green' }
-];
-
-const INITIAL_PROJECTS = [
-    {
-        id: 1,
-        name: 'Website Redesign',
-        status: 'Completed',
-        tasks: 12,
-        goals: ['Refresh visual identity', 'Optimize mobile performance', 'Integrate new CMS'],
-        startDate: '01 Jan 2026',
-        endDate: '30 Mar 2026'
-    },
-    {
-        id: 2,
-        name: 'Mobile App',
-        status: 'Planning',
-        tasks: 5,
-        goals: ['Define user flows', 'Create high-fidelity wireframes', 'Select tech stack'],
-        startDate: '15 Feb 2026',
-        endDate: '15 Jun 2026'
-    },
-    {
-        id: 3,
-        name: 'Marketing Campaign',
-        status: 'Active',
-        tasks: 8,
-        goals: ['Launch social media blitz', 'Coordinate with influencers', 'Track conversion rates'],
-        startDate: '10 Feb 2026',
-        endDate: '10 Apr 2026'
-    },
-];
-
-const INITIAL_EVENTS = [
-    {
-        id: 1,
-        title: "Global AI Hackathon 2026",
-        date: "15 Mar 2026",
-        location: "San Francisco, CA (Stanford Campus)",
-        type: "HACKATHON",
-        attendees: 4,
-        image: "https://images.unsplash.com/photo-1504384308090-c54be3855833?auto=format&fit=crop&q=80&w=400",
-        color: "from-pink-500 to-rose-500",
-        description: "Participating in the Stanford AI Safety Hackathon as a team. Focus on robust agentic alignment.",
-        buildingDescription: "We are building an autonomous auditing system for LLM transaction logs to detect misalignment in real-time.",
-        won: true,
-        projectId: 1, // Linked to Website Redesign for now as placeholder
-        links: [
-            { label: 'College Site', url: 'https://stanford.edu' },
-            { label: 'Hackathon Rules', url: 'https://hackathon.stanford.edu' }
-        ]
-    },
-    {
-        id: 2,
-        title: "React Summit & Meetup",
-        date: "22 Apr 2026",
-        location: "Online / Team Office",
-        type: "MEETUP",
-        attendees: 3,
-        image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=400",
-        color: "from-blue-400 to-cyan-500",
-        description: "Internal team sync during the React Summit. Goal: Refactor our component library.",
-        buildingDescription: "Migrating our core design tokens to a CSS-in-JS alternative with zero-runtime overhead.",
-        allottedThings: "Internal Design Docs, Cursor Pro Subscriptions, Pizza & Coffee.",
-        projectId: 2,
-        links: [
-            { label: 'Summit Link', url: 'https://reactsummit.com' }
-        ]
-    }
 ];
 
 function App() {
@@ -155,6 +41,7 @@ function App() {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [eventToEdit, setEventToEdit] = useState(null);
     const [selectedMemberId, setSelectedMemberId] = useState(null);
+    const [editingTask, setEditingTask] = useState(null);
 
     // 1. Auth Observer
     useEffect(() => {
@@ -164,82 +51,131 @@ function App() {
             'vvce25cse0639@vvce.ac.in',
         ];
 
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // Security check: Only allow specific emails
-                const isAllowed = ALLOWED_EMAILS.includes(user.email);
+        // Initial Session Check
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            handleSession(session);
+        });
 
-                if (!isAllowed) {
+        // Listen for Auth Changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            handleSession(session);
+        });
+
+        const handleSession = async (session) => {
+            if (session?.user) {
+                const user = session.user;
+                // Security check
+                if (!ALLOWED_EMAILS.includes(user.email)) {
                     console.error("Unauthorized access attempt:", user.email);
-                    await signOut(auth);
+                    await supabase.auth.signOut();
                     setIsAuthenticated(false);
                     setCurrentUser(null);
                     return;
                 }
 
                 setIsAuthenticated(true);
-                // Listen to personal profile changes
-                const userRef = doc(db, 'users', user.uid);
-                const unsubProfile = onSnapshot(userRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        setCurrentUser({ id: user.uid, ...docSnap.data() });
-                    } else {
-                        // Create initial profile if it doesn't exist
-                        const knownUser = USERS.find(u => u.id === user.email);
-                        const initialProfile = {
-                            name: knownUser?.name || user.displayName || user.email.split('@')[0],
-                            color: knownUser?.color || 'blue',
-                            bio: '',
-                            id: user.uid
-                        };
-                        setDoc(userRef, initialProfile);
-                        setCurrentUser(initialProfile);
+
+                // Fetch or Create Profile
+                const { data: profile, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profile) {
+                    setCurrentUser(profile);
+                } else {
+                    // Create initial profile
+                    const knownUser = USERS.find(u => u.id === user.email);
+                    const newProfile = {
+                        id: user.id,
+                        email: user.email,
+                        name: knownUser?.name || user.email.split('@')[0],
+                        color: knownUser?.color || 'blue',
+                        bio: '',
+                        last_seen: new Date().toISOString()
+                    };
+
+                    const { data: createdProfile, error: createError } = await supabase
+                        .from('users')
+                        .insert([newProfile])
+                        .select()
+                        .single();
+
+                    if (!createError) {
+                        setCurrentUser(createdProfile);
                     }
-                });
-                return () => unsubProfile();
+                }
             } else {
                 setIsAuthenticated(false);
                 setCurrentUser(null);
             }
-        });
-        return () => unsubscribe();
+        };
+
+        return () => subscription.unsubscribe();
     }, []);
 
     // 2. Real-time Data Sync (Tasks, Projects, Events)
     useEffect(() => {
         if (!currentUser?.id) return;
 
-        // Sync Tasks
-        const unsubTasks = onSnapshot(collection(db, 'tasks'), (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setTasks(items);
-        }, (error) => {
-            console.error("Firestore Tasks Listener Error:", error);
-        });
+        const fetchData = async () => {
+            const { data: tasksData } = await supabase.from('tasks').select('*');
+            if (tasksData) setTasks(tasksData.map(t => ({ ...t, title: t.task_name, id: t.id })));
 
-        // Sync Projects
-        const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setProjects(items);
-        });
+            const { data: projectsData } = await supabase.from('projects').select('*');
+            if (projectsData) setProjects(projectsData.map(p => ({ ...p, name: p.title, id: p.id })));
 
-        // Sync Events
-        const unsubEvents = onSnapshot(collection(db, 'events'), (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setEvents(items);
-        });
+            const { data: eventsData } = await supabase.from('events').select('*');
+            if (eventsData) setEvents(eventsData);
 
-        // Sync All Users
-        const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllUsers(items);
-        });
+            const { data: usersData } = await supabase.from('users').select('*');
+            if (usersData) setAllUsers(usersData);
+        };
+
+        fetchData();
+
+        // Realtime Subscription
+        const channel = supabase
+            .channel('db_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setTasks(prev => [...prev, { ...payload.new, title: payload.new.task_name, id: payload.new.id }]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setTasks(prev => prev.map(t => t.id === payload.new.id ? { ...payload.new, title: payload.new.task_name, id: payload.new.id } : t));
+                } else if (payload.eventType === 'DELETE') {
+                    setTasks(prev => prev.filter(t => t.id !== payload.old.id));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setProjects(prev => [...prev, { ...payload.new, name: payload.new.title, id: payload.new.id }]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setProjects(prev => prev.map(p => p.id === payload.new.id ? { ...payload.new, name: payload.new.title, id: payload.new.id } : p));
+                } else if (payload.eventType === 'DELETE') {
+                    setProjects(prev => prev.filter(p => p.id !== payload.old.id));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setEvents(prev => [...prev, payload.new]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setEvents(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
+                } else if (payload.eventType === 'DELETE') {
+                    setEvents(prev => prev.filter(e => e.id !== payload.old.id));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setAllUsers(prev => [...prev, payload.new]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setAllUsers(prev => prev.map(u => u.id === payload.new.id ? payload.new : u));
+                }
+            })
+            .subscribe();
 
         return () => {
-            unsubTasks();
-            unsubProjects();
-            unsubEvents();
-            unsubUsers();
+            supabase.removeChannel(channel);
         };
     }, [currentUser?.id]);
 
@@ -272,7 +208,7 @@ function App() {
                 // If status is irrelevant or wrong, sync it
                 const syncableStatuses = ['DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'WAITING', 'todo', 'NO_DUE_DATE', ''];
                 if (task.status !== expectedStatus && syncableStatuses.includes(task.status || '')) {
-                    await updateDoc(doc(db, 'tasks', task.id), { status: expectedStatus });
+                    await supabase.from('tasks').update({ status: expectedStatus }).eq('id', task.id);
                 }
             } catch (e) {
                 // Silently fail if date parsing fails
@@ -296,15 +232,13 @@ function App() {
 
     const handleLogout = async () => {
         try {
-            await signOut(auth);
+            await supabase.auth.signOut();
             setIsAuthenticated(false);
             setCurrentUser(null);
         } catch (error) {
             console.error("Logout failed:", error);
         }
     };
-
-    const [editingTask, setEditingTask] = useState(null);
 
     const handleEventClick = (event) => {
         setSelectedEvent(event);
@@ -319,22 +253,46 @@ function App() {
     const handleAddTask = async (taskData) => {
         try {
             if (editingTask) {
-                const taskRef = doc(db, 'tasks', editingTask.id);
-                await updateDoc(taskRef, taskData);
+                const mappedUpdates = {};
+                if (taskData.title) mappedUpdates.task_name = taskData.title;
+                if (taskData.projectId) mappedUpdates.project_id = taskData.projectId;
+                if (taskData.assignedTo) mappedUpdates.assigned_to = taskData.assignedTo;
+                if (taskData.rawDate) mappedUpdates.raw_date = taskData.rawDate;
+                if (taskData.status) mappedUpdates.status = taskData.status;
+                if (taskData.priority) mappedUpdates.priority = taskData.priority;
+                if (taskData.date) mappedUpdates.date = taskData.date;
+                if (taskData.time) mappedUpdates.time = taskData.time;
+                if (taskData.color) mappedUpdates.color = taskData.color;
+
+                const { error } = await supabase
+                    .from('tasks')
+                    .update(mappedUpdates)
+                    .eq('id', editingTask.id);
+
+                if (error) throw error;
                 setEditingTask(null);
             } else {
-                await addDoc(collection(db, 'tasks'), {
-                    ...taskData,
-                    status: taskData.status || "todo",
-                    userId: currentUser?.id, // Creator
-                    assignedTo: taskData.assignedTo || currentUser?.id,
-                    creatorName: currentUser?.name || 'Bharath',
-                    creatorInitial: (currentUser?.name || 'B').charAt(0),
-                    color: taskData.color || 'blue',
-                    isGradient: true,
-                    completed: false,
-                    createdAt: new Date()
-                });
+                // NEW: Supabase Logic
+                const { data, error } = await supabase
+                    .from('tasks')
+                    .insert([
+                        {
+                            task_name: taskData.title,
+                            project_id: taskData.projectId || taskData.projectName,
+                            user_id: (await supabase.auth.getUser()).data.user?.id,
+                            status: taskData.status || "todo",
+                            assigned_to: taskData.assignedTo,
+                            priority: taskData.priority,
+                            date: taskData.date
+                        }
+                    ])
+                    .select();
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    setTasks(prev => [...prev, { ...data[0], title: data[0].task_name, id: data[0].id }]);
+                }
             }
         } catch (error) {
             console.error("Error adding/updating task:", error);
@@ -343,12 +301,23 @@ function App() {
 
     const handleAddProject = async (newProject) => {
         try {
-            await addDoc(collection(db, 'projects'), {
-                ...newProject,
-                name: newProject.title,
-                tasks: 0,
-                userId: currentUser?.id
-            });
+            const { data, error } = await supabase
+                .from('projects')
+                .insert([
+                    {
+                        title: newProject.title,
+                        description: newProject.description || '',
+                        status: newProject.status || 'Planning',
+                        user_id: (await supabase.auth.getUser()).data.user?.id
+                    }
+                ])
+                .select();
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                setProjects(prev => [...prev, { ...data[0], name: data[0].title, id: data[0].id }]);
+            }
         } catch (error) {
             console.error("Error adding project:", error);
         }
@@ -357,15 +326,24 @@ function App() {
     const handleAddEvent = async (newEvent) => {
         try {
             if (eventToEdit) {
-                const eventRef = doc(db, 'events', eventToEdit.id);
-                await updateDoc(eventRef, newEvent);
+                const { error } = await supabase
+                    .from('events')
+                    .update(newEvent)
+                    .eq('id', eventToEdit.id);
+
+                if (error) throw error;
                 setEventToEdit(null);
             } else {
-                await addDoc(collection(db, 'events'), {
-                    ...newEvent,
-                    userId: currentUser?.id,
-                    completed: false
-                });
+                const { error } = await supabase
+                    .from('events')
+                    .insert([{
+                        ...newEvent,
+                        user_id: (await supabase.auth.getUser()).data.user?.id,
+                        completed: false,
+                        project_id: newEvent.projectId
+                    }]);
+
+                if (error) throw error;
             }
         } catch (error) {
             console.error("Error adding/updating event:", error);
@@ -374,7 +352,8 @@ function App() {
 
     const handleDeleteEvent = async (eventId) => {
         try {
-            await deleteDoc(doc(db, 'events', eventId));
+            const { error } = await supabase.from('events').delete().eq('id', eventId);
+            if (error) throw error;
             setSelectedEvent(null);
         } catch (error) {
             console.error("Error deleting event:", error);
@@ -385,8 +364,12 @@ function App() {
         try {
             const event = events.find(e => e.id === eventId);
             if (!event) return;
-            const eventRef = doc(db, 'events', eventId);
-            await updateDoc(eventRef, { completed: !event.completed });
+            const { error } = await supabase
+                .from('events')
+                .update({ completed: !event.completed })
+                .eq('id', eventId);
+
+            if (error) throw error;
 
             if (selectedEvent?.id === eventId) {
                 setSelectedEvent(prev => ({ ...prev, completed: !prev.completed }));
@@ -399,8 +382,12 @@ function App() {
     const handleUpdateProfile = async (updatedUser) => {
         try {
             if (!currentUser) return;
-            const userRef = doc(db, 'users', currentUser.id);
-            await setDoc(userRef, { ...updatedUser, lastSeen: new Date() }, { merge: true });
+            const { error } = await supabase
+                .from('users')
+                .update({ ...updatedUser, last_seen: new Date().toISOString() })
+                .eq('id', currentUser.id);
+
+            if (error) throw error;
         } catch (error) {
             console.error("Error updating profile:", error);
         }
@@ -410,8 +397,8 @@ function App() {
         try {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
-            const taskRef = doc(db, 'tasks', taskId);
-            await updateDoc(taskRef, { completed: !task.completed });
+            const { error } = await supabase.from('tasks').update({ completed: !task.completed }).eq('id', taskId);
+            if (error) throw error;
         } catch (error) {
             console.error("Error toggling task:", error);
         }
@@ -419,7 +406,8 @@ function App() {
 
     const handleDeleteTask = useCallback(async (taskId) => {
         try {
-            await deleteDoc(doc(db, 'tasks', taskId));
+            const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+            if (error) throw error;
         } catch (error) {
             console.error("Error deleting task:", error);
         }
@@ -431,10 +419,18 @@ function App() {
             if (!taskToDuplicate) return;
 
             const { id, ...data } = taskToDuplicate;
-            await addDoc(collection(db, 'tasks'), {
-                ...data,
-                title: `${data.title} (Copy)`
-            });
+            // Map known fields to DB columns
+            const { error } = await supabase.from('tasks').insert([{
+                task_name: `${data.title} (Copy)`,
+                project_id: data.projectId || null,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
+                status: data.status || 'todo',
+                assigned_to: data.assignedTo || null,
+                priority: data.priority || null,
+                date: data.date || null
+            }]);
+
+            if (error) throw error;
         } catch (error) {
             console.error("Error duplicating task:", error);
         }
@@ -442,8 +438,22 @@ function App() {
 
     const handleUpdateTask = useCallback(async (taskId, updates) => {
         try {
-            const taskRef = doc(db, 'tasks', taskId);
-            await updateDoc(taskRef, updates);
+            const mappedUpdates = {};
+            if (updates.title) mappedUpdates.task_name = updates.title;
+            if (updates.projectId) mappedUpdates.project_id = updates.projectId;
+            if (updates.assignedTo) mappedUpdates.assigned_to = updates.assignedTo;
+            if (updates.rawDate) mappedUpdates.raw_date = updates.rawDate;
+
+            // Direct mapping for matching keys
+            if (updates.status) mappedUpdates.status = updates.status;
+            if (updates.priority) mappedUpdates.priority = updates.priority;
+            if (updates.date) mappedUpdates.date = updates.date;
+            if (updates.time) mappedUpdates.time = updates.time;
+
+            if (Object.keys(mappedUpdates).length === 0) return;
+
+            const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
+            if (error) throw error;
         } catch (error) {
             console.error("Error updating task:", error);
         }
@@ -451,7 +461,8 @@ function App() {
 
     const handleDeleteProject = async (projectId) => {
         try {
-            await deleteDoc(doc(db, 'projects', projectId));
+            const { error } = await supabase.from('projects').delete().eq('id', projectId);
+            if (error) throw error;
             setCurrentView('projects');
         } catch (error) {
             console.error("Error deleting project:", error);
@@ -568,5 +579,4 @@ function App() {
         </Layout>
     );
 }
-
 export default App;
