@@ -25,7 +25,7 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
     const taskRef = useRef(null);
 
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-        id: task.id,
+        id: `calendar-${task.id}`,
         disabled: isResizing,
         data: { type: 'Task', task }
     });

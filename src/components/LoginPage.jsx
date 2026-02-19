@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { User, Lock, LogIn, Github, Chrome, Eye, EyeOff } from 'lucide-react';
-import { auth } from '../firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { User, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../supabase';
 
 const LoginPage = ({ onLogin, users }) => {
     const [userId, setUserId] = useState('');
@@ -18,17 +17,23 @@ const LoginPage = ({ onLogin, users }) => {
         try {
             // Use entered ID directly if it's an email, otherwise map to virtual domain
             const email = userId.includes('@') ? userId : `${userId.toLowerCase()}@madumaga.com`;
-            await signInWithEmailAndPassword(auth, email, password);
 
-            if (onLogin) {
-                const user = users.find(u => u.id === userId) || { id: userId, name: userId };
-                onLogin(user);
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (authError) {
+                throw authError; // Throw to catch block
             }
+
+            console.log("Logged in as:", data.user.email);
+            // App.jsx listener will handle the redirect/state update
+
         } catch (err) {
             console.error("Login Error:", err);
-            setError(err.code === 'auth/user-not-found' ? 'User not found' :
-                err.code === 'auth/wrong-password' ? 'Incorrect password' :
-                    'Sign in failed. Please try again.');
+            setError(err.message || 'Sign in failed. Please try again.');
+            alert("Access Denied: " + (err.message || 'Check credentials'));
             setIsLoading(false);
         }
     };

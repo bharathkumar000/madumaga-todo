@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { X, Clock, AlignLeft, Calendar as CalendarIcon, Palette, Folder, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth } from 'date-fns';
 
-const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projects = [], taskToEdit }) => {
+const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projects = [], taskToEdit, initialValues }) => {
     const formatDateLocal = (dateInput) => {
         const d = new Date(dateInput);
         if (isNaN(d.getTime())) return '';
@@ -18,15 +18,18 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
     const [title, setTitle] = useState('');
     const [type, setType] = useState('Task');
     const [date, setDate] = useState(todayStr); // YYYY-MM-DD
-    const [selectedAssigneeId, setSelectedAssigneeId] = useState(currentUser?.id || (users[0]?.id || ''));
+    const [selectedAssigneeIds, setSelectedAssigneeIds] = useState(
+        currentUser?.id ? [currentUser.id] : (users[0]?.id ? [users[0].id] : [])
+    );
     const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id || '');
     const [viewDate, setViewDate] = useState(new Date()); // For calendar navigation
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [priority, setPriority] = useState('High');
     const [isPriorityOpen, setIsPriorityOpen] = useState(false);
 
-    const activeAssignee = users.find(u => u.id === selectedAssigneeId);
-    const derivedColor = activeAssignee?.color || 'blue';
+    // Derived color based on first assignee
+    const firstAssignee = users.find(u => selectedAssigneeIds.includes(u.id));
+    const derivedColor = firstAssignee?.color || 'blue';
 
     React.useEffect(() => {
         if (taskToEdit) {
@@ -34,14 +37,32 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             // setType(taskToEdit.type || 'Task'); // If you have types
             setDate(taskToEdit.date ? formatDateLocal(taskToEdit.date) : todayStr);
             setPriority(taskToEdit.priority || 'High');
-            setSelectedAssigneeId(taskToEdit.assignedTo || taskToEdit.userId || currentUser?.id);
+
+            // Handle assignedTo which could be string or array
+            let initialAssignees = [];
+            if (Array.isArray(taskToEdit.assignedTo)) {
+                initialAssignees = taskToEdit.assignedTo;
+            } else if (taskToEdit.assignedTo) {
+                initialAssignees = [taskToEdit.assignedTo];
+            } else if (taskToEdit.userId) {
+                initialAssignees = [taskToEdit.userId];
+            }
+            setSelectedAssigneeIds(initialAssignees);
+        } else if (initialValues) {
+            // Handle defaults from quick add (e.g. Waiting List)
+            setTitle(initialValues.title || '');
+            setPriority(initialValues.priority || 'High');
+            // If date is explicitly null in defaults, keep it empty string
+            // Otherwise default to today
+            setDate(initialValues.date === null ? '' : (initialValues.date ? formatDateLocal(initialValues.date) : todayStr));
+            setSelectedAssigneeIds(currentUser?.id ? [currentUser.id] : []);
         } else {
             setTitle('');
             setPriority('High');
             setDate(todayStr);
-            setSelectedAssigneeId(currentUser?.id || (users[0]?.id || ''));
+            setSelectedAssigneeIds(currentUser?.id ? [currentUser.id] : []);
         }
-    }, [taskToEdit, isOpen]);
+    }, [taskToEdit, isOpen, currentUser, initialValues]);
 
     const generateDays = () => {
         const year = viewDate.getFullYear();
@@ -67,12 +88,21 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
         return days;
     };
 
+    const handleToggleAssignee = (userId) => {
+        setSelectedAssigneeIds(prev => {
+            if (prev.includes(userId)) {
+                return prev.filter(id => id !== userId);
+            } else {
+                return [...prev, userId];
+            }
+        });
+    };
+
     if (!isOpen) return null;
 
     const handleSave = () => {
         if (!title.trim()) return;
 
-        const assignedUser = users.find(u => u.id === selectedAssigneeId) || users[0];
         const selectedProject = projects.find(p => String(p.id) === String(selectedProjectId));
 
         const [y, m, d_val] = date.split('-').map(Number);
@@ -95,16 +125,20 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             }
         }
 
+        // Use first assignee for legacy fields, but send full list
+        const primaryAssignee = users.find(u => selectedAssigneeIds.includes(u.id));
+
         onSave({
             title,
             type,
             status,
             tag: '',
             userId: currentUser?.id, // Creator
-            assignedTo: assignedUser?.id, // Assignee
-            creatorName: assignedUser?.name,
-            creatorInitial: assignedUser?.name?.charAt(0),
+            assignedTo: selectedAssigneeIds.length === 1 ? selectedAssigneeIds[0] : selectedAssigneeIds, // Send single ID if only one for backward compat, or array
+            creatorName: primaryAssignee?.name || currentUser?.name,
+            creatorInitial: (primaryAssignee?.name || currentUser?.name)?.charAt(0),
             projectName: selectedProject?.name || '',
+            projectId: selectedProjectId,
             color: derivedColor,
             isGradient: true,
             priority,
@@ -188,27 +222,32 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                 <div className="flex gap-2.5">
                                     {[...users]
                                         .sort((a, b) => (a.id === currentUser?.id ? -1 : b.id === currentUser?.id ? 1 : 0))
-                                        .map((u) => (
-                                            <button
-                                                key={u.id}
-                                                type="button"
-                                                onClick={() => setSelectedAssigneeId(u.id)}
-                                                className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-black transition-all transform active:scale-90 relative uppercase
+                                        .map((u) => {
+                                            const isSelected = selectedAssigneeIds.includes(u.id);
+                                            return (
+                                                <button
+                                                    key={u.id}
+                                                    type="button"
+                                                    onClick={() => handleToggleAssignee(u.id)}
+                                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-black transition-all transform active:scale-90 relative uppercase
                                                 ${u.color === 'blue' ? 'bg-[#3B82F6]' :
-                                                        u.color === 'green' ? 'bg-[#10B981]' :
-                                                            u.color === 'rose' ? 'bg-[#F43F5E]' :
-                                                                u.color === 'pink' ? 'bg-[#EC4899]' :
-                                                                    'bg-[#F59E0B]'}
-                                                ${selectedAssigneeId === u.id ? 'ring-2 ring-white ring-offset-2 ring-offset-[#16191D] scale-110 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-110'}
+                                                            u.color === 'green' ? 'bg-[#10B981]' :
+                                                                u.color === 'rose' ? 'bg-[#F43F5E]' :
+                                                                    u.color === 'pink' ? 'bg-[#EC4899]' :
+                                                                        'bg-[#F59E0B]'}
+                                                ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-[#16191D] scale-110 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-110'}
                                             `}
-                                            >
-                                                {u.name?.charAt(0) || 'U'}
-                                            </button>
-                                        ))}
+                                                >
+                                                    {u.name?.charAt(0) || 'U'}
+                                                </button>
+                                            )
+                                        })}
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[13px] font-black text-white tracking-tight uppercase italic">
-                                        {users.find(u => u.id === selectedAssigneeId)?.name || 'Unassigned'}
+                                        {selectedAssigneeIds.length === 0 ? 'Unassigned' :
+                                            selectedAssigneeIds.length === 1 ? users.find(u => u.id === selectedAssigneeIds[0])?.name :
+                                                `${selectedAssigneeIds.length} Assignees`}
                                     </span>
                                 </div>
                             </div>

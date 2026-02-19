@@ -250,13 +250,18 @@ function App() {
         setIsEventModalOpen(true);
     };
 
+    const [newTaskDefaults, setNewTaskDefaults] = useState(null);
+
     const handleAddTask = async (taskData) => {
         try {
+            // Handle assignedTo array for DB compatibility (use first ID)
+            const primaryAssignee = Array.isArray(taskData.assignedTo) ? taskData.assignedTo[0] : taskData.assignedTo;
+
             if (editingTask) {
                 const mappedUpdates = {};
                 if (taskData.title) mappedUpdates.task_name = taskData.title;
                 if (taskData.projectId) mappedUpdates.project_id = taskData.projectId;
-                if (taskData.assignedTo) mappedUpdates.assigned_to = taskData.assignedTo;
+                if (taskData.assignedTo) mappedUpdates.assigned_to = primaryAssignee;
                 if (taskData.rawDate) mappedUpdates.raw_date = taskData.rawDate;
                 if (taskData.status) mappedUpdates.status = taskData.status;
                 if (taskData.priority) mappedUpdates.priority = taskData.priority;
@@ -272,23 +277,31 @@ function App() {
                 if (error) throw error;
                 setEditingTask(null);
             } else {
-                // NEW: Supabase Logic
+                // 1. Get the current user's ID
+                const { data: { user } } = await supabase.auth.getUser();
+
+                // 2. Insert the task into the Supabase 'tasks' table
                 const { data, error } = await supabase
                     .from('tasks')
                     .insert([
                         {
                             task_name: taskData.title,
-                            project_id: taskData.projectId || taskData.projectName,
-                            user_id: (await supabase.auth.getUser()).data.user?.id,
+                            project_id: taskData.projectId || null, // Ensure UUID or null
+                            user_id: user?.id,
                             status: taskData.status || "todo",
-                            assigned_to: taskData.assignedTo,
+                            assigned_to: primaryAssignee,
                             priority: taskData.priority,
                             date: taskData.date
                         }
                     ])
                     .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Error adding task:", error.message);
+                    throw error;
+                } else {
+                    console.log("Task added! The SQL trigger will now auto-update the project card count.");
+                }
 
                 if (data && data.length > 0) {
                     setTasks(prev => [...prev, { ...data[0], title: data[0].task_name, id: data[0].id }]);
@@ -441,7 +454,7 @@ function App() {
             const mappedUpdates = {};
             if (updates.title) mappedUpdates.task_name = updates.title;
             if (updates.projectId) mappedUpdates.project_id = updates.projectId;
-            if (updates.assignedTo) mappedUpdates.assigned_to = updates.assignedTo;
+            if (updates.assignedTo) mappedUpdates.assigned_to = Array.isArray(updates.assignedTo) ? updates.assignedTo[0] : updates.assignedTo;
             if (updates.rawDate) mappedUpdates.raw_date = updates.rawDate;
 
             // Direct mapping for matching keys
@@ -517,7 +530,10 @@ function App() {
                     projects={projects}
                     setProjects={setProjects}
                     events={events}
-                    onAddTask={() => setIsModalOpen(true)}
+                    onAddTask={(defaults = null) => {
+                        setNewTaskDefaults(defaults);
+                        setIsModalOpen(true);
+                    }}
                     onAddProject={() => setIsProjectModalOpen(true)}
                     onToggleTask={handleToggleTask}
                     onDeleteTask={handleDeleteTask}
@@ -533,9 +549,11 @@ function App() {
             )}
             <AddTaskModal
                 isOpen={isModalOpen}
+                initialValues={newTaskDefaults}
                 onClose={() => {
                     setIsModalOpen(false);
                     setEditingTask(null);
+                    setNewTaskDefaults(null);
                 }}
                 onSave={handleAddTask}
                 users={allUsers}
@@ -565,7 +583,21 @@ function App() {
                 onEdit={handleEditEvent}
                 onDelete={handleDeleteEvent}
                 onToggleComplete={handleToggleEventComplete}
+                onUpdateEvent={async (eventId, updates) => {
+                    try {
+                        const { error } = await supabase.from('events').update(updates).eq('id', eventId);
+                        if (error) throw error;
+
+                        setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updates } : e));
+                        if (selectedEvent?.id === eventId) {
+                            setSelectedEvent(prev => ({ ...prev, ...updates }));
+                        }
+                    } catch (error) {
+                        console.error("Error updating event:", error);
+                    }
+                }}
                 projects={projects}
+                users={allUsers}
             />
 
             <ProfileModal

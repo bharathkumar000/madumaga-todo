@@ -153,12 +153,15 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
 };
 
 const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [] }) => {
-    const { setNodeRef } = useDroppable({
+    const { setNodeRef, isOver } = useDroppable({
         id: 'WAITING',
     });
 
     return (
-        <div ref={setNodeRef} className="flex flex-col h-full p-2 bg-[#0D1117]">
+        <div
+            ref={setNodeRef}
+            className={`flex flex-col h-full p-2 bg-[#0D1117] transition-all duration-300 ${isOver ? 'bg-cyan-900/10 ring-2 ring-inset ring-cyan-500/30' : ''}`}
+        >
             <div className="flex items-center justify-between mb-4 px-2">
                 <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center">
@@ -196,7 +199,7 @@ const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, on
 
             <div className="px-2 pt-4">
                 <button
-                    onClick={onAddTask}
+                    onClick={() => onAddTask({ date: null, status: 'WAITING' })}
                     className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] text-gray-400 transition-all flex items-center justify-center gap-2 active:scale-95 group shadow-lg"
                 >
                     <Plus size={14} className="text-cyan-400 group-hover:scale-110 transition-transform" />
