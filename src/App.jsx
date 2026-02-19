@@ -277,14 +277,17 @@ function App() {
                 if (error) throw error;
                 setEditingTask(null);
             } else {
-                // NEW: Supabase Logic
+                // 1. Get the current user's ID
+                const { data: { user } } = await supabase.auth.getUser();
+
+                // 2. Insert the task into the Supabase 'tasks' table
                 const { data, error } = await supabase
                     .from('tasks')
                     .insert([
                         {
                             task_name: taskData.title,
-                            project_id: taskData.projectId || taskData.projectName, // project_id expects UUID or null
-                            user_id: (await supabase.auth.getUser()).data.user?.id,
+                            project_id: taskData.projectId || null, // Ensure UUID or null
+                            user_id: user?.id,
                             status: taskData.status || "todo",
                             assigned_to: primaryAssignee,
                             priority: taskData.priority,
@@ -293,7 +296,12 @@ function App() {
                     ])
                     .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Error adding task:", error.message);
+                    throw error;
+                } else {
+                    console.log("Task added! The SQL trigger will now auto-update the project card count.");
+                }
 
                 if (data && data.length > 0) {
                     setTasks(prev => [...prev, { ...data[0], title: data[0].task_name, id: data[0].id }]);
