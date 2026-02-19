@@ -1,7 +1,10 @@
-import { X, Calendar, MapPin, Info, Bell, ArrowRight, Pencil, Folder, Link as LinkIcon, Compass, Sparkles, Box, Check, Trash2, Trophy } from 'lucide-react';
+import { X, Calendar, MapPin, Info, Bell, ArrowRight, Pencil, Folder, Link as LinkIcon, Compass, Sparkles, Box, Check, Trash2, Trophy, Users, Plus, UserPlus } from 'lucide-react';
+import { useState } from 'react';
 
-const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, projects = [] }) => {
+const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, onUpdateEvent, projects = [], users = [] }) => {
     if (!event) return null;
+
+    const [isAddingMember, setIsAddingMember] = useState(null); // teamId being added to
 
     const linkedProject = projects.find(p => String(p.id) === String(event.projectId));
 
@@ -16,6 +19,47 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
         return colors[t] || fallbackColor;
     };
     const eventColor = getTypeColor(event.type, event.color);
+
+    const teams = event.teams || [];
+
+    const handleAddTeam = () => {
+        const newTeam = {
+            id: crypto.randomUUID(),
+            name: `Team ${teams.length + 1}`,
+            members: []
+        };
+        onUpdateEvent(event.id, { teams: [...teams, newTeam] });
+    };
+
+    const handleRemoveTeam = (teamId) => {
+        onUpdateEvent(event.id, { teams: teams.filter(t => t.id !== teamId) });
+    };
+
+    const handleUpdateTeamName = (teamId, newName) => {
+        onUpdateEvent(event.id, {
+            teams: teams.map(t => t.id === teamId ? { ...t, name: newName } : t)
+        });
+    };
+
+    const handleAddMemberToTeam = (teamId, userId) => {
+        const team = teams.find(t => t.id === teamId);
+        if (!team || team.members.includes(userId)) return;
+
+        onUpdateEvent(event.id, {
+            teams: teams.map(t =>
+                t.id === teamId ? { ...t, members: [...t.members, userId] } : t
+            )
+        });
+        setIsAddingMember(null);
+    };
+
+    const handleRemoveMemberFromTeam = (teamId, userId) => {
+        onUpdateEvent(event.id, {
+            teams: teams.map(t =>
+                t.id === teamId ? { ...t, members: t.members.filter(id => id !== userId) } : t
+            )
+        });
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
@@ -145,6 +189,117 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                 </div>
                             </div>
                         )}
+
+                        {/* Participating Teams Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-white/40 font-bold text-[10px] uppercase tracking-widest">
+                                    <Users size={14} />
+                                    <span>Participating Teams</span>
+                                </div>
+                                <button
+                                    onClick={handleAddTeam}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold text-white uppercase tracking-wider"
+                                >
+                                    <Plus size={12} />
+                                    Add Team
+                                </button>
+                            </div>
+
+                            {teams.length === 0 ? (
+                                <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] text-center">
+                                    <p className="text-gray-500 text-sm italic">No teams added yet.</p>
+                                </div>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {teams.map(team => (
+                                        <div key={team.id} className="p-4 rounded-2xl bg-[#1A1D21] border border-white/5 hover:border-white/10 transition-colors group">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <input
+                                                    type="text"
+                                                    value={team.name}
+                                                    onChange={(e) => handleUpdateTeamName(team.id, e.target.value)}
+                                                    className="bg-transparent text-white font-bold text-sm uppercase tracking-wider focus:outline-none focus:border-b border-white/20 pb-0.5 w-full max-w-[200px]"
+                                                    placeholder="Team Name"
+                                                />
+                                                <button
+                                                    onClick={() => handleRemoveTeam(team.id)}
+                                                    className="p-1.5 rounded-lg hover:bg-rose-500/10 text-gray-500 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {team.members.map(memberId => {
+                                                    const member = users.find(u => u.id === memberId);
+                                                    return (
+                                                        <div key={memberId} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/5 border border-white/5 pr-1">
+                                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white bg-gradient-to-br ${member?.color === 'blue' ? 'from-blue-500 to-indigo-600' :
+                                                                    member?.color === 'green' ? 'from-emerald-500 to-teal-600' :
+                                                                        member?.color === 'amber' ? 'from-amber-400 to-orange-500' :
+                                                                            'from-gray-500 to-gray-600'
+                                                                }`}>
+                                                                {(member?.name?.charAt(0) || '?').toUpperCase()}
+                                                            </div>
+                                                            <span className="text-xs text-gray-300 font-medium">{member?.name || 'Unknown'}</span>
+                                                            <button
+                                                                onClick={() => handleRemoveMemberFromTeam(team.id, memberId)}
+                                                                className="p-0.5 hover:text-rose-400 text-gray-500 transition-colors"
+                                                            >
+                                                                <X size={10} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+
+                                                <div className="relative">
+                                                    {isAddingMember === team.id ? (
+                                                        <div className="absolute top-0 left-0 mt-8 w-48 bg-[#1C1F26] border border-white/10 rounded-xl shadow-2xl z-50 p-1">
+                                                            <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                                                                {users.filter(u => !team.members.includes(u.id)).map(u => (
+                                                                    <button
+                                                                        key={u.id}
+                                                                        onClick={() => handleAddMemberToTeam(team.id, u.id)}
+                                                                        className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 text-left transition-colors"
+                                                                    >
+                                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white bg-gradient-to-br ${u.color === 'blue' ? 'from-blue-500 to-indigo-600' :
+                                                                                u.color === 'green' ? 'from-emerald-500 to-teal-600' :
+                                                                                    u.color === 'amber' ? 'from-amber-400 to-orange-500' :
+                                                                                        'from-gray-500 to-gray-600'
+                                                                            }`}>
+                                                                            {u.name.charAt(0).toUpperCase()}
+                                                                        </div>
+                                                                        <span className="text-xs text-gray-300 font-medium">{u.name}</span>
+                                                                    </button>
+                                                                ))}
+                                                                {users.filter(u => !team.members.includes(u.id)).length === 0 && (
+                                                                    <div className="p-2 text-[10px] text-gray-500 text-center italic">No available members</div>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setIsAddingMember(null)}
+                                                                className="w-full mt-1 p-1.5 text-[10px] text-center text-gray-500 hover:text-white border-t border-white/5"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => setIsAddingMember(team.id)}
+                                                            className="flex items-center gap-1 px-2 py-1 rounded-lg border border-dashed border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all text-[10px] uppercase font-bold tracking-widest"
+                                                        >
+                                                            <UserPlus size={10} />
+                                                            Add Member
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Resources & Info Section */}
                         <div className="grid grid-cols-1 gap-8">
