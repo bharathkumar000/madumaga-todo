@@ -275,8 +275,13 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
 
     const filteredTasks = useMemo(() => {
-        if (!selectedMemberId) return tasks;
-        return tasks.filter(t => t.assignedTo === selectedMemberId || t.userId === selectedMemberId);
+        if (!selectedMemberId) return tasks || [];
+        return (tasks || []).filter(t => {
+            const isAssigned = Array.isArray(t.assignedTo)
+                ? t.assignedTo.includes(selectedMemberId)
+                : t.assignedTo === selectedMemberId;
+            return isAssigned || t.userId === selectedMemberId;
+        });
     }, [tasks, selectedMemberId]);
 
     const waitingTasks = useMemo(() => {

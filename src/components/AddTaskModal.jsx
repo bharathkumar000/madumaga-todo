@@ -25,6 +25,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
     const [viewDate, setViewDate] = useState(new Date()); // For calendar navigation
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [priority, setPriority] = useState('High');
+    const [description, setDescription] = useState('');
     const [isPriorityOpen, setIsPriorityOpen] = useState(false);
 
     // Derived color based on first assignee
@@ -37,6 +38,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             // setType(taskToEdit.type || 'Task'); // If you have types
             setDate(taskToEdit.date ? formatDateLocal(taskToEdit.date) : todayStr);
             setPriority(taskToEdit.priority || 'High');
+            setDescription(taskToEdit.description || '');
 
             // Handle assignedTo which could be string or array
             let initialAssignees = [];
@@ -52,6 +54,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             // Handle defaults from quick add (e.g. Waiting List)
             setTitle(initialValues.title || '');
             setPriority(initialValues.priority || 'High');
+            setDescription(initialValues.description || '');
             // If date is explicitly null in defaults, keep it empty string
             // Otherwise default to today
             setDate(initialValues.date === null ? '' : (initialValues.date ? formatDateLocal(initialValues.date) : todayStr));
@@ -60,6 +63,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             setTitle('');
             setPriority('High');
             setDate(todayStr);
+            setDescription('');
             setSelectedAssigneeIds(currentUser?.id ? [currentUser.id] : []);
         }
     }, [taskToEdit, isOpen, currentUser, initialValues]);
@@ -142,6 +146,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             color: derivedColor,
             isGradient: true,
             priority,
+            description,
             date: date ? selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
             rawDate: date ? selectedDate.toISOString() : ''
         });
@@ -150,6 +155,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
         setDate(todayStr);
         setSelectedProjectId(projects[0]?.id || '');
         setPriority('High');
+        setDescription('');
         onClose();
     };
 
@@ -409,6 +415,8 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                             </div>
                             <textarea
                                 placeholder="Add more details..."
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
                                 className="w-full bg-white/[0.02] text-gray-400 placeholder-gray-700 resize-none focus:outline-none text-xs font-bold p-4 rounded-xl border border-white/5 min-h-[100px] focus:border-cyan-500/30 transition-all"
                                 rows={3}
                             />

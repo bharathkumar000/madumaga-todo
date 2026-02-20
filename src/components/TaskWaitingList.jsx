@@ -104,6 +104,11 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
                         {task.title}
                     </h3>
                 </div>
+                {task.description && (
+                    <p className="text-[10px] text-gray-500 font-medium italic mb-3 line-clamp-2 px-1 border-l border-white/10 ml-1">
+                        {task.description}
+                    </p>
+                )}
 
                 {/* Row 2: Badges (left) + Action icons pill (right) */}
                 <div className="flex items-center justify-between gap-1.5">

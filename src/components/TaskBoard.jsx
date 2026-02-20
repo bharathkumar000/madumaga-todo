@@ -13,7 +13,8 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
     });
 
     // Assignee lookup for fixed color (B=blue, S=green, R=amber)
-    const assignee = allUsers.find(u => u.id === task.assignedTo) || allUsers.find(u => u.id === task.userId);
+    const lookupId = Array.isArray(task.assignedTo) ? task.assignedTo[0] : task.assignedTo;
+    const assignee = allUsers.find(u => u.id === lookupId) || allUsers.find(u => u.id === task.userId);
     const assigneeColor = assignee?.color || 'blue';
 
     const taskColor = assigneeColor === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
@@ -115,6 +116,11 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                         <h3 className={`text-sm font-black tracking-tight leading-tight uppercase transition-all line-clamp-2 ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
                             {task.title}
                         </h3>
+                        {task.description && (
+                            <p className="text-[9px] text-gray-500 font-medium italic mt-1 line-clamp-1 opacity-70">
+                                {task.description}
+                            </p>
+                        )}
 
                         <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2">
                             {/* User Icon - Fixed Assignee Color */}
@@ -263,6 +269,7 @@ const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditT
                 <Column id="THIS_WEEK" title="This week" color="border-t-blue-500" tasks={getTasksByStatus('THIS_WEEK')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
                 <Column id="THIS_MONTH" title="This month" color="border-t-orange-300" tasks={getTasksByStatus('THIS_MONTH')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
                 <Column id="UPCOMING" title="Upcoming" color="border-t-yellow-500" tasks={getTasksByStatus('UPCOMING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
+                <Column id="WAITING" title="Waiting List" color="border-t-gray-500" tasks={getTasksByStatus('WAITING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
                 <Column id="NO_DUE_DATE" title="No due date" color="border-t-teal-500" tasks={getTasksByStatus('NO_DUE_DATE')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
             </div>
         </div>

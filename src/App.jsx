@@ -10,6 +10,7 @@ import ProfileModal from './components/ProfileModal';
 import LoginPage from './components/LoginPage';
 import EventsView from './components/EventsView';
 import AchievementsView from './components/AchievementsView';
+import TaskBankView from './components/TaskBankView';
 import { startOfDay, isBefore, isSameDay, endOfWeek, endOfMonth } from 'date-fns';
 
 function App() {
@@ -52,7 +53,8 @@ function App() {
         projectId: t.project_id,
         userId: t.user_id,
         assignedTo: t.assigned_to,
-        rawDate: t.raw_date
+        rawDate: t.raw_date,
+        description: t.description
     }), []);
 
     // 2. Real-time Data Sync (Tasks, Projects, Events)
@@ -231,7 +233,8 @@ function App() {
                     priority: taskData.priority,
                     date: taskData.date || null,
                     time: taskData.time || null,
-                    color: taskData.color || null
+                    color: taskData.color || null,
+                    description: taskData.description || null
                 };
 
                 const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', editingTask.id);
@@ -249,7 +252,8 @@ function App() {
                     date: taskData.date || null,
                     time: taskData.time || null,
                     raw_date: taskData.rawDate || null,
-                    color: taskData.color || null
+                    color: taskData.color || null,
+                    description: taskData.description || null
                 }]).select();
 
                 if (error) throw error;
@@ -405,7 +409,8 @@ function App() {
                 priority: data.priority || null,
                 date: data.date || null,
                 time: data.time || null,
-                color: data.color || null
+                color: data.color || null,
+                description: data.description || null
             }]);
             if (error) throw error;
         } catch (error) {
@@ -424,6 +429,7 @@ function App() {
             if (updates.priority) mappedUpdates.priority = updates.priority;
             if (updates.date) mappedUpdates.date = updates.date;
             if (updates.time) mappedUpdates.time = updates.time;
+            if (updates.description !== undefined) mappedUpdates.description = updates.description;
 
             if (Object.keys(mappedUpdates).length === 0) return;
             const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
@@ -465,13 +471,15 @@ function App() {
             users={allUsers}
             onMemberClick={(memberId) => {
                 setSelectedMemberId(memberId);
-                if (['events', 'achievements', 'projects'].includes(currentView)) setCurrentView('dashboard');
+                if (['events', 'achievements', 'projects', 'task-bank'].includes(currentView)) setCurrentView('dashboard');
             }}
         >
             {currentView === 'events' ? (
                 <EventsView events={events} projects={projects} onAddEvent={() => setIsEventModalOpen(true)} onEventClick={handleEventClick} />
             ) : currentView === 'achievements' ? (
                 <AchievementsView projects={projects} events={events} currentUser={currentUser} />
+            ) : currentView === 'task-bank' ? (
+                <TaskBankView tasks={tasks} allUsers={allUsers} projects={projects} />
             ) : (
                 <DashboardShell
                     currentView={currentView}
