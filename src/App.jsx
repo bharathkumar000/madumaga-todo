@@ -120,17 +120,44 @@ function App() {
         if (!currentUser?.id) return;
 
         const fetchData = async () => {
-            const { data: tasksData } = await supabase.from('tasks').select('*');
-            if (tasksData) setTasks(tasksData.map(t => ({ ...t, title: t.task_name, id: t.id })));
+            try {
+                const { data: tasksData, error: tasksError } = await supabase.from('tasks').select('*');
+                if (tasksError) throw tasksError;
+                if (tasksData) setTasks(tasksData.map(t => ({
+                    ...t,
+                    title: t.task_name,
+                    id: t.id,
+                    projectId: t.project_id,
+                    userId: t.user_id,
+                    assignedTo: t.assigned_to,
+                    rawDate: t.raw_date
+                })));
 
-            const { data: projectsData } = await supabase.from('projects').select('*');
-            if (projectsData) setProjects(projectsData.map(p => ({ ...p, name: p.title, id: p.id })));
+                const { data: projectsData, error: projError } = await supabase.from('projects').select('*');
+                if (projError) throw projError;
+                if (projectsData) setProjects(projectsData.map(p => ({
+                    ...p,
+                    name: p.title,
+                    id: p.id,
+                    userId: p.user_id
+                })));
 
-            const { data: eventsData } = await supabase.from('events').select('*');
-            if (eventsData) setEvents(eventsData);
+                const { data: eventsData, error: eventsError } = await supabase.from('events').select('*');
+                if (eventsError) throw eventsError;
+                if (eventsData) setEvents(eventsData.map(e => ({
+                    ...e,
+                    toDate: e.to_date,
+                    buildingDescription: e.building_description,
+                    projectId: e.project_id,
+                    userId: e.user_id
+                })));
 
-            const { data: usersData } = await supabase.from('users').select('*');
-            if (usersData) setAllUsers(usersData);
+                const { data: usersData, error: usersError } = await supabase.from('users').select('*');
+                if (usersError) throw usersError;
+                if (usersData) setAllUsers(usersData);
+            } catch (err) {
+                console.error("Critical Error Fetching Data:", err.message);
+            }
         };
 
         fetchData();
@@ -139,28 +166,56 @@ function App() {
         const channel = supabase
             .channel('db_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+                const mapTask = (t) => ({
+                    ...t,
+                    title: t.task_name,
+                    id: t.id,
+                    projectId: t.project_id,
+                    userId: t.user_id,
+                    assignedTo: t.assigned_to,
+                    rawDate: t.raw_date
+                });
+
                 if (payload.eventType === 'INSERT') {
-                    setTasks(prev => [...prev, { ...payload.new, title: payload.new.task_name, id: payload.new.id }]);
+                    setTasks(prev => [...prev, mapTask(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setTasks(prev => prev.map(t => t.id === payload.new.id ? { ...payload.new, title: payload.new.task_name, id: payload.new.id } : t));
+                    const updated = mapTask(payload.new);
+                    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
                 } else if (payload.eventType === 'DELETE') {
                     setTasks(prev => prev.filter(t => t.id !== payload.old.id));
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
+                const mapProject = (p) => ({
+                    ...p,
+                    name: p.title,
+                    id: p.id,
+                    userId: p.user_id
+                });
+
                 if (payload.eventType === 'INSERT') {
-                    setProjects(prev => [...prev, { ...payload.new, name: payload.new.title, id: payload.new.id }]);
+                    setProjects(prev => [...prev, mapProject(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setProjects(prev => prev.map(p => p.id === payload.new.id ? { ...payload.new, name: payload.new.title, id: payload.new.id } : p));
+                    const updated = mapProject(payload.new);
+                    setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
                 } else if (payload.eventType === 'DELETE') {
                     setProjects(prev => prev.filter(p => p.id !== payload.old.id));
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
+                const mapEvent = (e) => ({
+                    ...e,
+                    toDate: e.to_date,
+                    buildingDescription: e.building_description,
+                    projectId: e.project_id,
+                    userId: e.user_id
+                });
+
                 if (payload.eventType === 'INSERT') {
-                    setEvents(prev => [...prev, payload.new]);
+                    setEvents(prev => [...prev, mapEvent(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setEvents(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
+                    const updated = mapEvent(payload.new);
+                    setEvents(prev => prev.map(e => e.id === updated.id ? updated : e));
                 } else if (payload.eventType === 'DELETE') {
                     setEvents(prev => prev.filter(e => e.id !== payload.old.id));
                 }
@@ -300,11 +355,7 @@ function App() {
                     console.error("Error adding task:", error.message);
                     throw error;
                 } else {
-                    console.log("Task added! The SQL trigger will now auto-update the project card count.");
-                }
-
-                if (data && data.length > 0) {
-                    setTasks(prev => [...prev, { ...data[0], title: data[0].task_name, id: data[0].id }]);
+                    console.log("Task added successfully via Supabase.");
                 }
             }
         } catch (error) {
@@ -463,6 +514,7 @@ function App() {
             }]);
 
             if (error) throw error;
+            console.log("Task duplicated successfully.");
         } catch (error) {
             console.error("Error duplicating task:", error);
         }
@@ -471,16 +523,16 @@ function App() {
     const handleUpdateTask = useCallback(async (taskId, updates) => {
         try {
             const mappedUpdates = {};
-            if (updates.title) mappedUpdates.task_name = updates.title;
-            if (updates.projectId) mappedUpdates.project_id = updates.projectId;
-            if (updates.assignedTo) mappedUpdates.assigned_to = Array.isArray(updates.assignedTo) ? updates.assignedTo[0] : updates.assignedTo;
-            if (updates.rawDate) mappedUpdates.raw_date = updates.rawDate;
+            if (updates.title !== undefined) mappedUpdates.task_name = updates.title;
+            if (updates.projectId !== undefined) mappedUpdates.project_id = updates.projectId;
+            if (updates.assignedTo !== undefined) mappedUpdates.assigned_to = Array.isArray(updates.assignedTo) ? updates.assignedTo[0] : updates.assignedTo;
+            if (updates.rawDate !== undefined) mappedUpdates.raw_date = updates.rawDate;
 
             // Direct mapping for matching keys
-            if (updates.status) mappedUpdates.status = updates.status;
-            if (updates.priority) mappedUpdates.priority = updates.priority;
-            if (updates.date) mappedUpdates.date = updates.date;
-            if (updates.time) mappedUpdates.time = updates.time;
+            if (updates.status !== undefined) mappedUpdates.status = updates.status;
+            if (updates.priority !== undefined) mappedUpdates.priority = updates.priority;
+            if (updates.date !== undefined) mappedUpdates.date = updates.date;
+            if (updates.time !== undefined) mappedUpdates.time = updates.time;
 
             if (Object.keys(mappedUpdates).length === 0) return;
 
