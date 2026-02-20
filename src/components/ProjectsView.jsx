@@ -74,7 +74,7 @@ const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject,
                     <span>ADD PROJECTS</span>
                 </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SortableContext items={projects.map(p => p.id)} strategy={verticalListSortingStrategy}>
                     {projects && projects.map(project => {
                         const taskCount = project.task_count ?? tasks.filter(t => t.projectName === project.name && !t.completed).length;

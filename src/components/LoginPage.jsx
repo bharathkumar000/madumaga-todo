@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../supabase';
+import supabase from '../supabase';
 
 const LoginPage = ({ onLogin, users }) => {
     const [userId, setUserId] = useState('');

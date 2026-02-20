@@ -1,166 +1,134 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { addDays, isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth } from 'date-fns';
-import { supabase } from './supabase';
-
-// Components
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import supabase from './supabase';
 import Layout from './components/Layout';
 import DashboardShell from './components/DashboardShell';
-import EventsView from './components/EventsView';
-import AchievementsView from './components/AchievementsView';
 import AddTaskModal from './components/AddTaskModal';
 import AddProjectModal from './components/AddProjectModal';
 import AddEventModal from './components/AddEventModal';
 import EventDetailModal from './components/EventDetailModal';
 import ProfileModal from './components/ProfileModal';
 import LoginPage from './components/LoginPage';
-
-const getTodayStr = (offset = 0) => {
-    const d = addDays(new Date(), offset);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
-const USERS = [
-    { id: 'bharathece2006@gmail.com', name: 'Bharath', color: 'blue' },
-    { id: 'rishithsgowda13@gmail.com', name: 'Rishith', color: 'amber' },
-    { id: 'vvce25cse0639@vvce.ac.in', name: 'Srinivas', color: 'green' }
-];
+import EventsView from './components/EventsView';
+import AchievementsView from './components/AchievementsView';
+import { startOfDay, isBefore, isSameDay, endOfWeek, endOfMonth } from 'date-fns';
 
 function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
-    const [currentView, setCurrentView] = useState('dashboard');
     const [tasks, setTasks] = useState([]);
     const [projects, setProjects] = useState([]);
     const [events, setEvents] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
-
-    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [currentView, setCurrentView] = useState('dashboard');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [eventToEdit, setEventToEdit] = useState(null);
-    const [selectedMemberId, setSelectedMemberId] = useState(null);
     const [editingTask, setEditingTask] = useState(null);
+    const [selectedMemberId, setSelectedMemberId] = useState(null);
 
-    // 1. Auth Observer
+    // 1. Auth State Listener
     useEffect(() => {
-        const ALLOWED_EMAILS = [
-            'bharathece2006@gmail.com',
-            'rishithsgowda13@gmail.com',
-            'vvce25cse0639@vvce.ac.in',
-        ];
-
-        // Initial Session Check
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            handleSession(session);
-        });
-
-        // Listen for Auth Changes
+        if (!supabase?.auth) return;
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            handleSession(session);
-        });
-
-        const handleSession = async (session) => {
-            if (session?.user) {
-                const user = session.user;
-                // Security check
-                if (!ALLOWED_EMAILS.includes(user.email)) {
-                    console.error("Unauthorized access attempt:", user.email);
-                    await supabase.auth.signOut();
-                    setIsAuthenticated(false);
-                    setCurrentUser(null);
-                    return;
-                }
-
+            if (session) {
                 setIsAuthenticated(true);
-
-                // Fetch or Create Profile
-                const { data: profile, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
-
-                if (profile) {
-                    setCurrentUser(profile);
-                } else {
-                    // Create initial profile
-                    const knownUser = USERS.find(u => u.id === user.email);
-                    const newProfile = {
-                        id: user.id,
-                        email: user.email,
-                        name: knownUser?.name || user.email.split('@')[0],
-                        color: knownUser?.color || 'blue',
-                        bio: '',
-                        last_seen: new Date().toISOString()
-                    };
-
-                    const { data: createdProfile, error: createError } = await supabase
-                        .from('users')
-                        .insert([newProfile])
-                        .select()
-                        .single();
-
-                    if (!createError) {
-                        setCurrentUser(createdProfile);
-                    }
-                }
+                setCurrentUser(session.user);
             } else {
                 setIsAuthenticated(false);
                 setCurrentUser(null);
             }
-        };
+        });
 
         return () => subscription.unsubscribe();
     }, []);
+
+    const mapTask = useCallback((t) => ({
+        ...t,
+        title: t.task_name,
+        id: t.id,
+        projectId: t.project_id,
+        userId: t.user_id,
+        assignedTo: t.assigned_to,
+        rawDate: t.raw_date
+    }), []);
 
     // 2. Real-time Data Sync (Tasks, Projects, Events)
     useEffect(() => {
         if (!currentUser?.id) return;
 
         const fetchData = async () => {
-            const { data: tasksData } = await supabase.from('tasks').select('*');
-            if (tasksData) setTasks(tasksData.map(t => ({ ...t, title: t.task_name, id: t.id })));
+            try {
+                const { data: tasksData, error: tasksError } = await supabase.from('tasks').select('*');
+                if (tasksError) throw tasksError;
+                if (tasksData) setTasks(tasksData.map(mapTask));
 
-            const { data: projectsData } = await supabase.from('projects').select('*');
-            if (projectsData) setProjects(projectsData.map(p => ({ ...p, name: p.title, id: p.id })));
+                const { data: projectsData, error: projError } = await supabase.from('projects').select('*');
+                if (projError) throw projError;
+                if (projectsData) setProjects(projectsData.map(p => ({
+                    ...p,
+                    name: p.title,
+                    id: p.id,
+                    userId: p.user_id
+                })));
 
-            const { data: eventsData } = await supabase.from('events').select('*');
-            if (eventsData) setEvents(eventsData);
+                const { data: eventsData, error: eventsError } = await supabase.from('events').select('*');
+                if (eventsError) throw eventsError;
+                if (eventsData) setEvents(eventsData.map(e => ({
+                    ...e,
+                    toDate: e.to_date,
+                    buildingDescription: e.building_description,
+                    projectId: e.project_id,
+                    userId: e.user_id,
+                    teams: e.teams || []
+                })));
 
-            const { data: usersData } = await supabase.from('users').select('*');
-            if (usersData) setAllUsers(usersData);
+                const { data: usersData, error: usersError } = await supabase.from('users').select('*');
+                if (usersError) throw usersError;
+                if (usersData) setAllUsers(usersData);
+            } catch (err) {
+                console.error("Critical Error Fetching Data:", err.message);
+            }
         };
 
         fetchData();
 
-        // Realtime Subscription
+        // Realtime Subscriptions
         const channel = supabase
             .channel('db_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
                 if (payload.eventType === 'INSERT') {
-                    setTasks(prev => [...prev, { ...payload.new, title: payload.new.task_name, id: payload.new.id }]);
+                    setTasks(prev => {
+                        if (prev.find(t => t.id === payload.new.id)) return prev;
+                        return [...prev, mapTask(payload.new)];
+                    });
                 } else if (payload.eventType === 'UPDATE') {
-                    setTasks(prev => prev.map(t => t.id === payload.new.id ? { ...payload.new, title: payload.new.task_name, id: payload.new.id } : t));
+                    const updated = mapTask(payload.new);
+                    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
                 } else if (payload.eventType === 'DELETE') {
                     setTasks(prev => prev.filter(t => t.id !== payload.old.id));
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
+                const mapProj = (p) => ({ ...p, name: p.title, id: p.id, userId: p.user_id });
                 if (payload.eventType === 'INSERT') {
-                    setProjects(prev => [...prev, { ...payload.new, name: payload.new.title, id: payload.new.id }]);
+                    setProjects(prev => [...prev, mapProj(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setProjects(prev => prev.map(p => p.id === payload.new.id ? { ...payload.new, name: payload.new.title, id: payload.new.id } : p));
+                    const updated = mapProj(payload.new);
+                    setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
                 } else if (payload.eventType === 'DELETE') {
                     setProjects(prev => prev.filter(p => p.id !== payload.old.id));
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
+                const mapEv = (e) => ({ ...e, toDate: e.to_date, buildingDescription: e.building_description, projectId: e.project_id, userId: e.user_id, teams: e.teams || [] });
                 if (payload.eventType === 'INSERT') {
-                    setEvents(prev => [...prev, payload.new]);
+                    setEvents(prev => [...prev, mapEv(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setEvents(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
+                    const updated = mapEv(payload.new);
+                    setEvents(prev => prev.map(e => e.id === updated.id ? updated : e));
                 } else if (payload.eventType === 'DELETE') {
                     setEvents(prev => prev.filter(e => e.id !== payload.old.id));
                 }
@@ -177,7 +145,7 @@ function App() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [currentUser?.id]);
+    }, [currentUser?.id, mapTask]);
 
     // 3. Auto-Categorize Tasks based on Date (Healing Logic)
     useEffect(() => {
@@ -186,11 +154,9 @@ function App() {
         const today = startOfDay(new Date());
 
         tasks.forEach(async (task) => {
-            // Only sync incomplete tasks with dates
             if (!task.date || task.completed) return;
 
             try {
-                // Try to parse the date from rawDate or date string
                 const taskDate = task.rawDate ? startOfDay(new Date(task.rawDate)) : startOfDay(new Date(task.date));
                 if (isNaN(taskDate.getTime())) return;
 
@@ -205,18 +171,17 @@ function App() {
                     expectedStatus = 'THIS_MONTH';
                 }
 
-                // If status is irrelevant or wrong, sync it
                 const syncableStatuses = ['DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'WAITING', 'todo', 'NO_DUE_DATE', ''];
                 if (task.status !== expectedStatus && syncableStatuses.includes(task.status || '')) {
                     await supabase.from('tasks').update({ status: expectedStatus }).eq('id', task.id);
                 }
             } catch (e) {
-                // Silently fail if date parsing fails
+                // Ignore parsing errors
             }
         });
-    }, [tasks.length, currentView]); // Re-sync on length change or view change
+    }, [tasks.length, currentView]);
 
-    // View Persistence (Simplified)
+    // View Persistence
     useEffect(() => {
         const savedView = localStorage.getItem('todo_currentView');
         if (savedView) setCurrentView(savedView);
@@ -227,7 +192,7 @@ function App() {
     }, [currentView]);
 
     const handleLogin = (user) => {
-        // Authenticated users are handled by onAuthStateChanged
+        // Authenticated by listener
     };
 
     const handleLogout = async () => {
@@ -254,83 +219,61 @@ function App() {
 
     const handleAddTask = async (taskData) => {
         try {
-            // Handle assignedTo array for DB compatibility (use first ID)
             const primaryAssignee = Array.isArray(taskData.assignedTo) ? taskData.assignedTo[0] : taskData.assignedTo;
 
             if (editingTask) {
-                const mappedUpdates = {};
-                if (taskData.title) mappedUpdates.task_name = taskData.title;
-                if (taskData.projectId) mappedUpdates.project_id = taskData.projectId;
-                if (taskData.assignedTo) mappedUpdates.assigned_to = primaryAssignee;
-                if (taskData.rawDate) mappedUpdates.raw_date = taskData.rawDate;
-                if (taskData.status) mappedUpdates.status = taskData.status;
-                if (taskData.priority) mappedUpdates.priority = taskData.priority;
-                if (taskData.date) mappedUpdates.date = taskData.date;
-                if (taskData.time) mappedUpdates.time = taskData.time;
-                if (taskData.color) mappedUpdates.color = taskData.color;
+                const mappedUpdates = {
+                    task_name: taskData.title,
+                    project_id: taskData.projectId || null,
+                    assigned_to: primaryAssignee,
+                    raw_date: taskData.rawDate || null,
+                    status: taskData.status,
+                    priority: taskData.priority,
+                    date: taskData.date || null,
+                    time: taskData.time || null,
+                    color: taskData.color || null
+                };
 
-                const { error } = await supabase
-                    .from('tasks')
-                    .update(mappedUpdates)
-                    .eq('id', editingTask.id);
-
+                const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', editingTask.id);
                 if (error) throw error;
                 setEditingTask(null);
             } else {
-                // 1. Get the current user's ID
                 const { data: { user } } = await supabase.auth.getUser();
+                const { data, error } = await supabase.from('tasks').insert([{
+                    task_name: taskData.title,
+                    project_id: taskData.projectId || null,
+                    user_id: user?.id,
+                    status: taskData.status || "WAITING",
+                    assigned_to: primaryAssignee,
+                    priority: taskData.priority,
+                    date: taskData.date || null,
+                    time: taskData.time || null,
+                    raw_date: taskData.rawDate || null,
+                    color: taskData.color || null
+                }]).select();
 
-                // 2. Insert the task into the Supabase 'tasks' table
-                const { data, error } = await supabase
-                    .from('tasks')
-                    .insert([
-                        {
-                            task_name: taskData.title,
-                            project_id: taskData.projectId || null, // Ensure UUID or null
-                            user_id: user?.id,
-                            status: taskData.status || "todo",
-                            assigned_to: primaryAssignee,
-                            priority: taskData.priority,
-                            date: taskData.date
-                        }
-                    ])
-                    .select();
-
-                if (error) {
-                    console.error("Error adding task:", error.message);
-                    throw error;
-                } else {
-                    console.log("Task added! The SQL trigger will now auto-update the project card count.");
-                }
-
+                if (error) throw error;
                 if (data && data.length > 0) {
-                    setTasks(prev => [...prev, { ...data[0], title: data[0].task_name, id: data[0].id }]);
+                    setTasks(prev => {
+                        if (prev.find(t => t.id === data[0].id)) return prev;
+                        return [...prev, mapTask(data[0])];
+                    });
                 }
             }
         } catch (error) {
-            console.error("Error adding/updating task:", error);
+            console.error("Error in handleAddTask:", error);
         }
     };
 
     const handleAddProject = async (newProject) => {
         try {
-            const { data, error } = await supabase
-                .from('projects')
-                .insert([
-                    {
-                        title: newProject.title,
-                        description: newProject.description || '',
-                        status: newProject.status || 'Planning',
-                        user_id: (await supabase.auth.getUser()).data.user?.id
-                    }
-                ])
-                .select();
-
-            if (error) {
-                console.error("Supabase Project Error:", error.message);
-                return;
-            }
-
+            const { data, error } = await supabase.from('projects').insert([{
+                title: newProject.title,
+                description: newProject.description || '',
+                status: newProject.status || 'Planning',
+                user_id: (await supabase.auth.getUser()).data.user?.id
+            }]).select();
+            if (error) throw error;
             if (data && data.length > 0) {
                 setProjects(prev => [...prev, { ...data[0], name: data[0].title, id: data[0].id }]);
             }
@@ -344,41 +287,32 @@ function App() {
             const mappedEvent = {
                 title: newEvent.title,
                 date: newEvent.date,
-                to_date: newEvent.toDate,
-                location: newEvent.location,
+                to_date: newEvent.toDate || null,
+                location: newEvent.location || 'Online',
                 type: newEvent.type,
                 attendees: newEvent.attendees,
                 image: newEvent.image,
                 color: newEvent.color,
                 description: newEvent.description,
-                building_description: newEvent.buildingDescription,
+                building_description: newEvent.buildingDescription || null,
                 project_id: newEvent.projectId || null,
                 won: newEvent.won,
                 links: newEvent.links || [],
+                teams: newEvent.teams || [],
                 user_id: (await supabase.auth.getUser()).data.user?.id,
                 completed: false
             };
 
             if (eventToEdit) {
-                const { error } = await supabase
-                    .from('events')
-                    .update(mappedEvent)
-                    .eq('id', eventToEdit.id);
-
+                const { error } = await supabase.from('events').update(mappedEvent).eq('id', eventToEdit.id);
                 if (error) throw error;
                 setEventToEdit(null);
             } else {
-                const { error } = await supabase
-                    .from('events')
-                    .insert([mappedEvent]);
-
-                if (error) {
-                    console.error("Supabase Event Error:", error.message);
-                    return;
-                }
+                const { error } = await supabase.from('events').insert([mappedEvent]);
+                if (error) throw error;
             }
         } catch (error) {
-            console.error("Error adding/updating event:", error);
+            console.error("Error in handleAddEvent:", error);
         }
     };
 
@@ -392,20 +326,36 @@ function App() {
         }
     };
 
+    const handleUpdateEvent = async (eventId, updates) => {
+        try {
+            const mappedUpdates = { ...updates };
+            if (updates.toDate) mappedUpdates.to_date = updates.toDate;
+            if (updates.buildingDescription) mappedUpdates.building_description = updates.buildingDescription;
+            if (updates.projectId) mappedUpdates.project_id = updates.projectId;
+            if (updates.userId) mappedUpdates.user_id = updates.userId;
+
+            // Cleanup camelCase
+            delete mappedUpdates.toDate;
+            delete mappedUpdates.buildingDescription;
+            delete mappedUpdates.projectId;
+            delete mappedUpdates.userId;
+
+            const { error } = await supabase.from('events').update(mappedUpdates).eq('id', eventId);
+            if (error) throw error;
+            setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updates } : e));
+            if (selectedEvent?.id === eventId) setSelectedEvent(prev => ({ ...prev, ...updates }));
+        } catch (error) {
+            console.error("Error updating event:", error);
+        }
+    };
+
     const handleToggleEventComplete = async (eventId) => {
         try {
             const event = events.find(e => e.id === eventId);
             if (!event) return;
-            const { error } = await supabase
-                .from('events')
-                .update({ completed: !event.completed })
-                .eq('id', eventId);
-
+            const { error } = await supabase.from('events').update({ completed: !event.completed }).eq('id', eventId);
             if (error) throw error;
-
-            if (selectedEvent?.id === eventId) {
-                setSelectedEvent(prev => ({ ...prev, completed: !prev.completed }));
-            }
+            if (selectedEvent?.id === eventId) setSelectedEvent(prev => ({ ...prev, completed: !prev.completed }));
         } catch (error) {
             console.error("Error toggling event:", error);
         }
@@ -414,11 +364,7 @@ function App() {
     const handleUpdateProfile = async (updatedUser) => {
         try {
             if (!currentUser) return;
-            const { error } = await supabase
-                .from('users')
-                .update({ ...updatedUser, last_seen: new Date().toISOString() })
-                .eq('id', currentUser.id);
-
+            const { error } = await supabase.from('users').update({ ...updatedUser, last_seen: new Date().toISOString() }).eq('id', currentUser.id);
             if (error) throw error;
         } catch (error) {
             console.error("Error updating profile:", error);
@@ -447,11 +393,9 @@ function App() {
 
     const handleDuplicateTask = useCallback(async (taskId) => {
         try {
-            const taskToDuplicate = tasks.find(task => task.id === taskId);
+            const taskToDuplicate = tasks.find(t => t.id === taskId);
             if (!taskToDuplicate) return;
-
             const { id, ...data } = taskToDuplicate;
-            // Map known fields to DB columns
             const { error } = await supabase.from('tasks').insert([{
                 task_name: `${data.title} (Copy)`,
                 project_id: data.projectId || null,
@@ -459,9 +403,10 @@ function App() {
                 status: data.status || 'todo',
                 assigned_to: data.assignedTo || null,
                 priority: data.priority || null,
-                date: data.date || null
+                date: data.date || null,
+                time: data.time || null,
+                color: data.color || null
             }]);
-
             if (error) throw error;
         } catch (error) {
             console.error("Error duplicating task:", error);
@@ -475,15 +420,12 @@ function App() {
             if (updates.projectId) mappedUpdates.project_id = updates.projectId;
             if (updates.assignedTo) mappedUpdates.assigned_to = Array.isArray(updates.assignedTo) ? updates.assignedTo[0] : updates.assignedTo;
             if (updates.rawDate) mappedUpdates.raw_date = updates.rawDate;
-
-            // Direct mapping for matching keys
             if (updates.status) mappedUpdates.status = updates.status;
             if (updates.priority) mappedUpdates.priority = updates.priority;
             if (updates.date) mappedUpdates.date = updates.date;
             if (updates.time) mappedUpdates.time = updates.time;
 
             if (Object.keys(mappedUpdates).length === 0) return;
-
             const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
             if (error) throw error;
         } catch (error) {
@@ -509,10 +451,7 @@ function App() {
         }
     };
 
-    if (!isAuthenticated) {
-        return <LoginPage onLogin={handleLogin} users={allUsers} />;
-    }
-
+    if (!isAuthenticated) return <LoginPage onLogin={handleLogin} users={allUsers} />;
 
     return (
         <Layout
@@ -526,19 +465,11 @@ function App() {
             users={allUsers}
             onMemberClick={(memberId) => {
                 setSelectedMemberId(memberId);
-                // Switch to a task-centric view if not already in one
-                if (['events', 'achievements', 'projects'].includes(currentView)) {
-                    setCurrentView('dashboard');
-                }
+                if (['events', 'achievements', 'projects'].includes(currentView)) setCurrentView('dashboard');
             }}
         >
             {currentView === 'events' ? (
-                <EventsView
-                    events={events}
-                    projects={projects}
-                    onAddEvent={() => setIsEventModalOpen(true)}
-                    onEventClick={handleEventClick}
-                />
+                <EventsView events={events} projects={projects} onAddEvent={() => setIsEventModalOpen(true)} onEventClick={handleEventClick} />
             ) : currentView === 'achievements' ? (
                 <AchievementsView projects={projects} events={events} currentUser={currentUser} />
             ) : (
@@ -549,10 +480,7 @@ function App() {
                     projects={projects}
                     setProjects={setProjects}
                     events={events}
-                    onAddTask={(defaults = null) => {
-                        setNewTaskDefaults(defaults);
-                        setIsModalOpen(true);
-                    }}
+                    onAddTask={(defaults = null) => { setNewTaskDefaults(defaults); setIsModalOpen(true); }}
                     onAddProject={() => setIsProjectModalOpen(true)}
                     onToggleTask={handleToggleTask}
                     onDeleteTask={handleDeleteTask}
@@ -567,67 +495,16 @@ function App() {
                 />
             )}
             <AddTaskModal
-                isOpen={isModalOpen}
-                initialValues={newTaskDefaults}
-                onClose={() => {
-                    setIsModalOpen(false);
-                    setEditingTask(null);
-                    setNewTaskDefaults(null);
-                }}
-                onSave={handleAddTask}
-                users={allUsers}
-                currentUser={currentUser}
-                projects={projects}
-                taskToEdit={editingTask}
+                isOpen={isModalOpen} initialValues={newTaskDefaults}
+                onClose={() => { setIsModalOpen(false); setEditingTask(null); setNewTaskDefaults(null); }}
+                onSave={handleAddTask} users={allUsers} currentUser={currentUser} projects={projects} taskToEdit={editingTask}
             />
-            <AddProjectModal
-                isOpen={isProjectModalOpen}
-                onClose={() => setIsProjectModalOpen(false)}
-                onSave={handleAddProject}
-            />
-            <AddEventModal
-                isOpen={isEventModalOpen}
-                onClose={() => {
-                    setIsEventModalOpen(false);
-                    setEventToEdit(null);
-                }}
-                onSave={handleAddEvent}
-                projects={projects}
-                eventToEdit={eventToEdit}
-            />
-
-            <EventDetailModal
-                event={selectedEvent}
-                onClose={() => setSelectedEvent(null)}
-                onEdit={handleEditEvent}
-                onDelete={handleDeleteEvent}
-                onToggleComplete={handleToggleEventComplete}
-                onUpdateEvent={async (eventId, updates) => {
-                    try {
-                        const { error } = await supabase.from('events').update(updates).eq('id', eventId);
-                        if (error) throw error;
-
-                        setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updates } : e));
-                        if (selectedEvent?.id === eventId) {
-                            setSelectedEvent(prev => ({ ...prev, ...updates }));
-                        }
-                    } catch (error) {
-                        console.error("Error updating event:", error);
-                    }
-                }}
-                projects={projects}
-                users={allUsers}
-            />
-
-            <ProfileModal
-                isOpen={isProfileModalOpen}
-                onClose={() => setIsProfileModalOpen(false)}
-                currentUser={currentUser}
-                onUpdateProfile={handleUpdateProfile}
-                users={allUsers}
-            />
-
+            <AddProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} onSave={handleAddProject} />
+            <AddEventModal isOpen={isEventModalOpen} onClose={() => { setIsEventModalOpen(false); setEventToEdit(null); }} onSave={handleAddEvent} projects={projects} eventToEdit={eventToEdit} />
+            <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onEdit={handleEditEvent} onDelete={handleDeleteEvent} onToggleComplete={handleToggleEventComplete} onUpdateEvent={handleUpdateEvent} projects={projects} users={allUsers} />
+            <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} currentUser={currentUser} onUpdateProfile={handleUpdateProfile} users={allUsers} />
         </Layout>
     );
 }
+
 export default App;

@@ -219,7 +219,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                 <div className="h-[1px] flex-1 bg-gray-800/50"></div>
                             </div>
                             <div className="flex items-center gap-4">
-                                <div className="flex gap-2.5">
+                                <div className="flex gap-3">
                                     {[...users]
                                         .sort((a, b) => (a.id === currentUser?.id ? -1 : b.id === currentUser?.id ? 1 : 0))
                                         .map((u) => {
@@ -229,13 +229,13 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                                     key={u.id}
                                                     type="button"
                                                     onClick={() => handleToggleAssignee(u.id)}
-                                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-black transition-all transform active:scale-90 relative uppercase
+                                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-black transition-all transform active:scale-95 relative uppercase
                                                 ${u.color === 'blue' ? 'bg-[#3B82F6]' :
                                                             u.color === 'green' ? 'bg-[#10B981]' :
                                                                 u.color === 'rose' ? 'bg-[#F43F5E]' :
                                                                     u.color === 'pink' ? 'bg-[#EC4899]' :
                                                                         'bg-[#F59E0B]'}
-                                                ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-[#16191D] scale-110 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-110'}
+                                                ${isSelected ? 'ring-2 ring-white ring-offset-1 ring-offset-[#16191D] shadow-lg z-10' : 'opacity-30 hover:opacity-100'}
                                             `}
                                                 >
                                                     {u.name?.charAt(0) || 'U'}
