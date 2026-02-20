@@ -13,7 +13,8 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
     });
 
     // Assignee lookup for fixed color (B=blue, S=green, R=amber)
-    const assignee = allUsers.find(u => u.id === task.assignedTo) || allUsers.find(u => u.id === task.userId);
+    const lookupId = Array.isArray(task.assignedTo) ? task.assignedTo[0] : task.assignedTo;
+    const assignee = allUsers.find(u => u.id === lookupId) || allUsers.find(u => u.id === task.userId);
     const assigneeColor = assignee?.color || 'blue';
 
     const taskColor = assigneeColor === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
@@ -268,6 +269,7 @@ const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditT
                 <Column id="THIS_WEEK" title="This week" color="border-t-blue-500" tasks={getTasksByStatus('THIS_WEEK')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
                 <Column id="THIS_MONTH" title="This month" color="border-t-orange-300" tasks={getTasksByStatus('THIS_MONTH')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
                 <Column id="UPCOMING" title="Upcoming" color="border-t-yellow-500" tasks={getTasksByStatus('UPCOMING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
+                <Column id="WAITING" title="Waiting List" color="border-t-gray-500" tasks={getTasksByStatus('WAITING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
                 <Column id="NO_DUE_DATE" title="No due date" color="border-t-teal-500" tasks={getTasksByStatus('NO_DUE_DATE')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
             </div>
         </div>

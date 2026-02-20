@@ -5,11 +5,17 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
     const selectedMember = allUsers.find(u => u.id === selectedMemberId);
 
     const filteredTasks = selectedMemberId
-        ? (tasks || []).filter(t => t.assignedTo === selectedMemberId)
+        ? (tasks || []).filter(t => {
+            const isAssigned = Array.isArray(t.assignedTo)
+                ? t.assignedTo.includes(selectedMemberId)
+                : t.assignedTo === selectedMemberId;
+            return isAssigned || t.userId === selectedMemberId;
+        })
         : (tasks || []);
 
     const getTaskColor = (task) => {
-        const assignee = allUsers.find(u => u.id === task.assignedTo) || allUsers.find(u => u.id === task.userId);
+        const lookupId = Array.isArray(task.assignedTo) ? task.assignedTo[0] : task.assignedTo;
+        const assignee = allUsers.find(u => u.id === lookupId) || allUsers.find(u => u.id === task.userId);
         const c = assignee?.color || task.color || 'blue';
         return c === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
             c === 'green' ? 'rgba(16, 185, 129, 0.4)' :
@@ -130,7 +136,8 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
                                 <div className="flex items-center justify-between relative z-10 mt-auto">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         {(() => {
-                                            const assignee = allUsers.find(u => u.id === task.assignedTo) || allUsers.find(u => u.id === task.userId);
+                                            const lookupId = Array.isArray(task.assignedTo) ? task.assignedTo[0] : task.assignedTo;
+                                            const assignee = allUsers.find(u => u.id === lookupId) || allUsers.find(u => u.id === task.userId);
                                             if (!assignee) return null;
                                             return (
                                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black uppercase border border-white/20 shadow-lg
