@@ -326,7 +326,10 @@ function App() {
                 ])
                 .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase Project Error:", error.message);
+                return;
+            }
 
             if (data && data.length > 0) {
                 setProjects(prev => [...prev, { ...data[0], name: data[0].title, id: data[0].id }]);
@@ -338,10 +341,28 @@ function App() {
 
     const handleAddEvent = async (newEvent) => {
         try {
+            const mappedEvent = {
+                title: newEvent.title,
+                date: newEvent.date,
+                to_date: newEvent.toDate,
+                location: newEvent.location,
+                type: newEvent.type,
+                attendees: newEvent.attendees,
+                image: newEvent.image,
+                color: newEvent.color,
+                description: newEvent.description,
+                building_description: newEvent.buildingDescription,
+                project_id: newEvent.projectId || null,
+                won: newEvent.won,
+                links: newEvent.links || [],
+                user_id: (await supabase.auth.getUser()).data.user?.id,
+                completed: false
+            };
+
             if (eventToEdit) {
                 const { error } = await supabase
                     .from('events')
-                    .update(newEvent)
+                    .update(mappedEvent)
                     .eq('id', eventToEdit.id);
 
                 if (error) throw error;
@@ -349,14 +370,12 @@ function App() {
             } else {
                 const { error } = await supabase
                     .from('events')
-                    .insert([{
-                        ...newEvent,
-                        user_id: (await supabase.auth.getUser()).data.user?.id,
-                        completed: false,
-                        project_id: newEvent.projectId
-                    }]);
+                    .insert([mappedEvent]);
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Supabase Event Error:", error.message);
+                    return;
+                }
             }
         } catch (error) {
             console.error("Error adding/updating event:", error);
