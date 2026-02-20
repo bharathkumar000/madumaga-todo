@@ -120,6 +120,11 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
                                         </div>
                                     )}
                                 </div>
+                                {task.description && (
+                                    <p className="text-[10px] text-gray-500 font-medium italic mb-3 line-clamp-2 px-1 border-l border-white/10 ml-1">
+                                        {task.description}
+                                    </p>
+                                )}
 
                                 {/* Bottom row: tags + actions */}
                                 <div className="flex items-center justify-between relative z-10 mt-auto">

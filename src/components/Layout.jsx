@@ -1,6 +1,6 @@
 // src/components/Layout.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Home, List, CheckSquare, Calendar as CalendarIcon, Settings, Plus, LogIn, Trophy, Award } from 'lucide-react';
+import { Home, List, CheckSquare, Calendar as CalendarIcon, Settings, Plus, LogIn, Trophy, Award, Database } from 'lucide-react';
 
 const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProject, onLogout, onProfileClick, currentUser, users = [], onMemberClick }) => {
     const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -116,6 +116,12 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                             label="Achievements"
                             active={currentView === 'achievements'}
                             onClick={() => onNavigate('achievements')}
+                        />
+                        <NavItem
+                            icon={<Database size={20} />}
+                            label="Task Bank"
+                            active={currentView === 'task-bank'}
+                            onClick={() => onNavigate('task-bank')}
                         />
 
                         {/* Team Section */}
