@@ -64,10 +64,10 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                                                         currentUser.color === 'orange' ? 'bg-[#F97316] shadow-orange-500/20' :
                                                             currentUser.color === 'purple' ? 'bg-[#A855F7] shadow-purple-500/20' :
                                                                 'bg-[#F59E0B] shadow-amber-500/20'}`}>
-                                    {currentUser.avatar || currentUser.name.charAt(0)}
+                                    {currentUser.avatar || currentUser.name?.charAt(0) || currentUser.email?.charAt(0) || '?'}
                                 </div>
                                 <div className="flex flex-col overflow-hidden">
-                                    <span className="text-[14px] font-black text-white truncate uppercase italic tracking-tight">{currentUser.name}</span>
+                                    <span className="text-[14px] font-black text-white truncate uppercase italic tracking-tight">{currentUser.name || currentUser.email?.split('@')[0]}</span>
                                 </div>
                             </div>
                         </div>

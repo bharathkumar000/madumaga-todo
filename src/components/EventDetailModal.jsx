@@ -236,9 +236,9 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                                     return (
                                                         <div key={memberId} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/5 border border-white/5 pr-1">
                                                             <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white bg-gradient-to-br ${member?.color === 'blue' ? 'from-blue-500 to-indigo-600' :
-                                                                    member?.color === 'green' ? 'from-emerald-500 to-teal-600' :
-                                                                        member?.color === 'amber' ? 'from-amber-400 to-orange-500' :
-                                                                            'from-gray-500 to-gray-600'
+                                                                member?.color === 'green' ? 'from-emerald-500 to-teal-600' :
+                                                                    member?.color === 'amber' ? 'from-amber-400 to-orange-500' :
+                                                                        'from-gray-500 to-gray-600'
                                                                 }`}>
                                                                 {(member?.name?.charAt(0) || '?').toUpperCase()}
                                                             </div>
@@ -264,11 +264,11 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                                                         className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 text-left transition-colors"
                                                                     >
                                                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white bg-gradient-to-br ${u.color === 'blue' ? 'from-blue-500 to-indigo-600' :
-                                                                                u.color === 'green' ? 'from-emerald-500 to-teal-600' :
-                                                                                    u.color === 'amber' ? 'from-amber-400 to-orange-500' :
-                                                                                        'from-gray-500 to-gray-600'
+                                                                            u.color === 'green' ? 'from-emerald-500 to-teal-600' :
+                                                                                u.color === 'amber' ? 'from-amber-400 to-orange-500' :
+                                                                                    'from-gray-500 to-gray-600'
                                                                             }`}>
-                                                                            {u.name.charAt(0).toUpperCase()}
+                                                                            {u.name?.charAt(0)?.toUpperCase() || '?'}
                                                                         </div>
                                                                         <span className="text-xs text-gray-300 font-medium">{u.name}</span>
                                                                     </button>
