@@ -6,16 +6,24 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 
 // Sortable Task Card Component
-const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [] }) => {
+const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: `board-${task.id}`,
         data: { type: 'Task', task }
     });
 
-    // Assignee lookup for fixed color (B=blue, S=green, R=amber)
-    const lookupId = Array.isArray(task.assignedTo) ? task.assignedTo[0] : task.assignedTo;
-    const assignee = allUsers.find(u => u.id === lookupId) || allUsers.find(u => u.id === task.userId);
-    const assigneeColor = assignee?.color || 'blue';
+    // Color logic: if I am in the assigned list, show MY color
+    // Otherwise show the first assignee's color
+    const assignees = useMemo(() => {
+        const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+        return ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
+    }, [task.assignedTo, allUsers]);
+
+    const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+    const myProfile = allUsers.find(u => u.id === currentUser?.id);
+
+    const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === task.userId));
+    const assigneeColor = activeAssignee?.color || 'blue';
 
     const taskColor = assigneeColor === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
         assigneeColor === 'green' ? 'rgba(16, 185, 129, 0.4)' :
@@ -113,9 +121,36 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
             <div className="relative z-10 px-3 py-2">
                 <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
-                        <h3 className={`text-sm font-black tracking-tight leading-tight uppercase transition-all line-clamp-2 ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
-                            {task.title}
-                        </h3>
+                        <div className="flex items-start gap-2 mb-1.5">
+                            {/* Assignee Avatars - Left of Title */}
+                            <div className="flex -space-x-2 flex-shrink-0 mt-0.5">
+                                {assignees.slice(0, 3).map((u, i) => (
+                                    <div
+                                        key={u.id}
+                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-md border border-[#16191D] relative overflow-hidden transition-transform hover:translate-y-[-2px] hover:z-20"
+                                        style={{
+                                            background: colorGradients[u.color || 'blue'] || colorGradients.blue,
+                                            zIndex: 10 - i
+                                        }}
+                                    >
+                                        <span className="relative z-10">{(u.name?.charAt(0) || 'B').toUpperCase()}</span>
+                                    </div>
+                                ))}
+                                {assignees.length === 0 && (
+                                    <div
+                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-md border border-[#16191D] relative overflow-hidden"
+                                        style={{ background: colorGradients.blue }}
+                                    >
+                                        <span className="relative z-10">{(task.creatorInitial || 'B').toUpperCase()}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <h3 className={`text-sm font-black tracking-tight leading-tight uppercase transition-all line-clamp-2 ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                                {task.title}
+                            </h3>
+                        </div>
+
                         {task.description && (
                             <p className="text-[9px] text-gray-500 font-medium italic mt-1 line-clamp-1 opacity-70">
                                 {task.description}
@@ -123,22 +158,6 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                         )}
 
                         <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2">
-                            {/* User Icon - Fixed Assignee Color */}
-                            <div
-                                className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-md border border-white/20 relative overflow-hidden flex-shrink-0"
-                                style={{
-                                    background: colorGradients[assigneeColor] || colorGradients.blue
-                                }}
-                            >
-                                <span className="relative z-10">{(assignee?.name?.charAt(0) || task.creatorInitial || 'B')?.toUpperCase()}</span>
-                            </div>
-
-                            {(task.projectName || task.tag) && (
-                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-[0.1em] border border-white/5 bg-white/5 text-gray-500 line-clamp-2 max-w-[100px]">
-                                    {task.projectName || task.tag}
-                                </span>
-                            )}
-
                             {task.date && (
                                 <div className="flex items-center gap-1 text-[8px] text-gray-400 font-bold uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
                                     <Calendar size={8} />
@@ -149,16 +168,24 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                     </div>
 
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        {/* Priority Badge - Stays visible, positioned at top of action column area */}
-                        {task.priority && (
-                            <div className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-wider border bg-black/40 backdrop-blur-md 
-                                ${task.priority === 'High' ? 'text-cyan-400 border-cyan-500/20' :
-                                    task.priority === 'Mid' ? 'text-amber-400 border-amber-500/20' :
-                                        'text-emerald-400 border-emerald-500/20'
-                                }`}>
-                                {task.priority}
-                            </div>
-                        )}
+                        {/* Priority & Project Badge area */}
+                        <div className="flex flex-col items-end gap-1">
+                            {task.priority && (
+                                <div className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-wider border bg-black/40 backdrop-blur-md 
+                                    ${task.priority === 'High' ? 'text-cyan-400 border-cyan-500/20' :
+                                        task.priority === 'Mid' ? 'text-amber-400 border-amber-500/20' :
+                                            'text-emerald-400 border-emerald-500/20'
+                                    }`}>
+                                    {task.priority}
+                                </div>
+                            )}
+
+                            {(task.projectName || task.tag) && (
+                                <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-[0.1em] border border-white/10 bg-white/10 text-gray-400 max-w-[80px] truncate text-right">
+                                    {task.projectName || task.tag}
+                                </span>
+                            )}
+                        </div>
 
 
                         <div className="grid grid-cols-2 gap-1.5 opacity-0 group-hover:opacity-100 transition-all scale-90 translate-x-1 group-hover:translate-x-0 duration-300">
@@ -195,7 +222,7 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
 });
 
 // Sortable Column Component
-const Column = React.memo(({ id, title, count, color, tasks = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [] }) => {
+const Column = React.memo(({ id, title, count, color, tasks = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
     const { setNodeRef } = useDroppable({
         id: id,
         data: { type: 'Column', id }
@@ -230,6 +257,7 @@ const Column = React.memo(({ id, title, count, color, tasks = [], onToggleTask, 
                             onDuplicateTask={onDuplicateTask}
                             onEditTask={onEditTask}
                             allUsers={allUsers}
+                            currentUser={currentUser}
                         />
                     ))}
                 </SortableContext>
@@ -238,7 +266,7 @@ const Column = React.memo(({ id, title, count, color, tasks = [], onToggleTask, 
     );
 });
 
-const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, selectedMemberId, onClearMemberFilter, allUsers = [] }) => {
+const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
     const selectedMember = allUsers.find(u => u.id === selectedMemberId);
     const getTasksByStatus = (status) => tasks.filter(t => t.status === status);
 
@@ -264,13 +292,13 @@ const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditT
             </div>
 
             <div className="flex-1 flex overflow-x-auto overflow-y-hidden">
-                <Column id="DELAYED" title="Delayed" color="border-t-orange-500" tasks={getTasksByStatus('DELAYED')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
-                <Column id="TODAY" title="Today" color="border-t-pink-500" tasks={getTasksByStatus('TODAY')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
-                <Column id="THIS_WEEK" title="This week" color="border-t-blue-500" tasks={getTasksByStatus('THIS_WEEK')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
-                <Column id="THIS_MONTH" title="This month" color="border-t-orange-300" tasks={getTasksByStatus('THIS_MONTH')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
-                <Column id="UPCOMING" title="Upcoming" color="border-t-yellow-500" tasks={getTasksByStatus('UPCOMING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
-                <Column id="WAITING" title="Waiting List" color="border-t-gray-500" tasks={getTasksByStatus('WAITING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
-                <Column id="NO_DUE_DATE" title="No due date" color="border-t-teal-500" tasks={getTasksByStatus('NO_DUE_DATE')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} />
+                <Column id="DELAYED" title="Delayed" color="border-t-orange-500" tasks={getTasksByStatus('DELAYED')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
+                <Column id="TODAY" title="Today" color="border-t-pink-500" tasks={getTasksByStatus('TODAY')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
+                <Column id="THIS_WEEK" title="This week" color="border-t-blue-500" tasks={getTasksByStatus('THIS_WEEK')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
+                <Column id="THIS_MONTH" title="This month" color="border-t-orange-300" tasks={getTasksByStatus('THIS_MONTH')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
+                <Column id="UPCOMING" title="Upcoming" color="border-t-yellow-500" tasks={getTasksByStatus('UPCOMING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
+                <Column id="waiting" title="Waiting List" color="border-t-gray-500" tasks={getTasksByStatus('waiting')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
+                <Column id="NO_DUE_DATE" title="No due date" color="border-t-teal-500" tasks={getTasksByStatus('NO_DUE_DATE')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
             </div>
         </div>
     );

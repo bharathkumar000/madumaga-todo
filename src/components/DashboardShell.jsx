@@ -277,10 +277,12 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
     const filteredTasks = useMemo(() => {
         if (!selectedMemberId) return tasks || [];
         return (tasks || []).filter(t => {
-            const isAssigned = Array.isArray(t.assignedTo)
-                ? t.assignedTo.includes(selectedMemberId)
-                : t.assignedTo === selectedMemberId;
-            return isAssigned || t.userId === selectedMemberId;
+            const ids = Array.isArray(t.assignedTo)
+                ? t.assignedTo
+                : (typeof t.assignedTo === 'string' ? t.assignedTo.split(',') : (t.assignedTo ? [t.assignedTo] : []));
+
+            const isAssigned = ids.some(id => String(id) === String(selectedMemberId));
+            return isAssigned || String(t.userId) === String(selectedMemberId);
         });
     }, [tasks, selectedMemberId]);
 
@@ -314,6 +316,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                             selectedMemberId={selectedMemberId}
                             onClearMemberFilter={onClearMemberFilter}
                             allUsers={allUsers}
+                            currentUser={currentUser}
                         />
                     ) : currentView === 'projects' ? (
                         selectedProjectId ? (
@@ -340,7 +343,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                             />
                         )
                     ) : currentView === 'tasks' ? (
-                        <MemoizedTasksView tasks={filteredTasks} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onDuplicateTask={onDuplicateTask} onEditTask={onEditTask} selectedMemberId={selectedMemberId} onClearMemberFilter={onClearMemberFilter} allUsers={allUsers} />
+                        <MemoizedTasksView tasks={filteredTasks} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onDuplicateTask={onDuplicateTask} onEditTask={onEditTask} selectedMemberId={selectedMemberId} onClearMemberFilter={onClearMemberFilter} allUsers={allUsers} currentUser={currentUser} />
                     ) : (
                         <MemoizedTaskBoard
                             tasks={filteredTasks}
@@ -351,6 +354,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                             selectedMemberId={selectedMemberId}
                             onClearMemberFilter={onClearMemberFilter}
                             allUsers={allUsers}
+                            currentUser={currentUser}
                         />
                     )}
                 </div>
@@ -378,6 +382,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                             onDuplicateTask={onDuplicateTask}
                             onEditTask={onEditTask}
                             allUsers={allUsers}
+                            currentUser={currentUser}
                         />
                     </aside>
                 )}
@@ -389,8 +394,13 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                             className={`relative px-2 py-1.5 rounded-lg border border-white/10 shadow-2xl overflow-hidden bg-[#16191D] scale-105`}
                             style={{
                                 backgroundImage: (() => {
-                                    const assignee = allUsers.find(u => u.id === activeTask.assignedTo) || allUsers.find(u => u.id === activeTask.userId);
-                                    const c = assignee?.color || activeTask.color || 'blue';
+                                    const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
+                                    const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
+                                    const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+                                    const myProfile = allUsers.find(u => u.id === currentUser?.id);
+                                    const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === activeTask.userId));
+                                    const c = activeAssignee?.color || 'blue';
+
                                     const taskColor = c === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
                                         c === 'green' ? 'rgba(16, 185, 129, 0.4)' :
                                             (c === 'amber' || c === 'yellow') ? 'rgba(245, 158, 11, 0.4)' :
@@ -408,8 +418,12 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                         >
                             {/* Ambient Glows */}
                             {(() => {
-                                const assignee = allUsers.find(u => u.id === activeTask.assignedTo) || allUsers.find(u => u.id === activeTask.userId);
-                                const c = assignee?.color || activeTask.color || 'blue';
+                                const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
+                                const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
+                                const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+                                const myProfile = allUsers.find(u => u.id === currentUser?.id);
+                                const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === activeTask.userId));
+                                const c = activeAssignee?.color || 'blue';
                                 const glowColor = c === 'blue' ? '#3B82F6' : c === 'green' ? '#10B981' : (c === 'amber' || c === 'yellow') ? '#F59E0B' : c === 'rose' ? '#F43F5E' : c === 'pink' ? '#EC4899' : c === 'teal' ? '#14B8A6' : c === 'orange' ? '#F97316' : c === 'purple' ? '#A855F7' : '#8AB4F8';
                                 return (
                                     <>
@@ -479,22 +493,31 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                 </div>
 
                                 <div className="flex items-center gap-1.5 mt-2">
-                                    <div
-                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-white/20 shadow-lg"
-                                        style={{
-                                            background: (() => {
-                                                const assignee = allUsers.find(u => u.id === activeTask.assignedTo || u.id === activeTask.userId);
-                                                const c = assignee?.color || 'blue';
-                                                return c === 'blue' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' :
-                                                    c === 'green' ? 'linear-gradient(135deg, #10B981, #059669)' :
-                                                        c === 'amber' || c === 'yellow' ? 'linear-gradient(135deg, #F59E0B, #D97706)' :
-                                                            c === 'rose' ? 'linear-gradient(135deg, #F43F5E, #E11D48)' :
-                                                                c === 'pink' ? 'linear-gradient(135deg, #EC4899, #BE185D)' :
-                                                                    'linear-gradient(135deg, #3B82F6, #1D4ED8)';
-                                            })()
-                                        }}
-                                    >
-                                        {(allUsers.find(u => u.id === activeTask.assignedTo || u.id === activeTask.userId)?.name?.charAt(0) || activeTask.creatorInitial || 'B')?.toUpperCase()}
+                                    <div className="flex -space-x-1.5">
+                                        {(() => {
+                                            const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
+                                            const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
+                                            return (assignees.length > 0 ? assignees.slice(0, 3) : [{ id: 'creator', color: 'blue', name: activeTask.creatorInitial || 'B' }]).map((u, i) => (
+                                                <div
+                                                    key={u.id}
+                                                    className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white border border-white/20 shadow-lg"
+                                                    style={{
+                                                        background: (() => {
+                                                            const c = u.color || 'blue';
+                                                            return c === 'blue' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' :
+                                                                c === 'green' ? 'linear-gradient(135deg, #10B981, #059669)' :
+                                                                    c === 'amber' || c === 'yellow' ? 'linear-gradient(135deg, #F59E0B, #D97706)' :
+                                                                        c === 'rose' ? 'linear-gradient(135deg, #F43F5E, #E11D48)' :
+                                                                            c === 'pink' ? 'linear-gradient(135deg, #EC4899, #BE185D)' :
+                                                                                'linear-gradient(135deg, #3B82F6, #1D4ED8)';
+                                                        })(),
+                                                        zIndex: 10 - i
+                                                    }}
+                                                >
+                                                    {(u.name?.charAt(0) || 'B').toUpperCase()}
+                                                </div>
+                                            ));
+                                        })()}
                                     </div>
                                     <span className="text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-[0.1em] border border-white/5 bg-white/5 text-gray-400">
                                         {activeTask.tag || 'TASK'}

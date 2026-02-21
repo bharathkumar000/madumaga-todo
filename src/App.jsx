@@ -12,6 +12,7 @@ import EventsView from './components/EventsView';
 import AchievementsView from './components/AchievementsView';
 import TaskBankView from './components/TaskBankView';
 import { startOfDay, isBefore, isSameDay, endOfWeek, endOfMonth } from 'date-fns';
+import { X, Check } from 'lucide-react';
 
 function App() {
     const [tasks, setTasks] = useState([]);
@@ -245,7 +246,6 @@ function App() {
                 return;
             }
 
-            const primaryAssignee = Array.isArray(taskData.assignedTo) ? taskData.assignedTo[0] : taskData.assignedTo;
             const safeProjectId = (taskData.projectId && taskData.projectId !== '') ? taskData.projectId : null;
 
             const fullPayload = {
@@ -253,7 +253,7 @@ function App() {
                 project_id: safeProjectId,
                 user_id: user.id,
                 status: taskData.status || 'waiting',
-                assigned_to: primaryAssignee || null,
+                assigned_to: taskData.assignedTo || null,
                 priority: taskData.priority,
                 date: taskData.date || null,
                 time: taskData.time || null,
@@ -279,13 +279,14 @@ function App() {
                 const { data, error: insertError } = await supabase.from('tasks').insert([fullPayload]).select();
 
                 if (insertError) {
-                    console.error("Full Sync failed:", insertError.message);
+                    console.error("Full Sync failed, attempting smart fallback:", insertError.message);
 
-                    // FALLBACK: Try a "Bare Minimum" insert if the table is missing columns
-                    // Note: If project_id is NOT NULL in DB, this might still fail if project_id is null
+                    const primaryAssignee = Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0 ? taskData.assignedTo[0] : (typeof taskData.assignedTo === 'string' ? taskData.assignedTo : null);
+
                     const barePayload = {
                         task_name: taskData.title,
                         user_id: user.id,
+                        assigned_to: primaryAssignee,
                         description: taskData.description || null
                     };
 
@@ -415,10 +416,25 @@ function App() {
     const handleUpdateProfile = async (updatedUser) => {
         try {
             if (!currentUser) return;
-            const { error } = await supabase.from('users').update({ ...updatedUser, last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+
+            // Construct a clean profile object with only the fields we want to persist in the 'users' table
+            const profileData = {
+                id: currentUser.id,
+                name: updatedUser.name,
+                color: updatedUser.color,
+                bio: updatedUser.bio,
+                avatar: updatedUser.avatar,
+                last_seen: new Date().toISOString()
+            };
+
+            const { error } = await supabase.from('users').upsert(profileData);
             if (error) throw error;
+
+            // Note: Real-time listener in App.jsx will catch this and update allUsers, 
+            // which will in turn update currentUserProfile.
         } catch (error) {
             console.error("Error updating profile:", error);
+            showToast("Profile update failed: " + error.message);
         }
     };
 
@@ -489,7 +505,7 @@ function App() {
             const mappedUpdates = {};
             if (updates.title) mappedUpdates.task_name = updates.title;
             if (updates.projectId) mappedUpdates.project_id = updates.projectId;
-            if (updates.assignedTo) mappedUpdates.assigned_to = Array.isArray(updates.assignedTo) ? updates.assignedTo[0] : updates.assignedTo;
+            if (updates.assignedTo) mappedUpdates.assigned_to = updates.assignedTo;
             if (updates.rawDate) mappedUpdates.raw_date = updates.rawDate;
             if (updates.status) mappedUpdates.status = updates.status;
             if (updates.priority) mappedUpdates.priority = updates.priority;
@@ -499,7 +515,17 @@ function App() {
 
             if (Object.keys(mappedUpdates).length === 0) return;
             const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
-            if (error) throw error;
+
+            if (error) {
+                console.error("Update failed, attempting smart fallback:", error.message);
+                if (mappedUpdates.assigned_to && Array.isArray(mappedUpdates.assigned_to)) {
+                    mappedUpdates.assigned_to = mappedUpdates.assigned_to[0];
+                    const { error: retryError } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
+                    if (retryError) showToast("Sync failed: " + retryError.message);
+                } else {
+                    showToast("Sync failed: " + error.message);
+                }
+            }
         } catch (error) {
             console.error("Error updating task:", error);
         }
@@ -619,6 +645,10 @@ function App() {
         }
     };
 
+    const currentUserProfile = useMemo(() => {
+        return allUsers.find(u => u.id === currentUser?.id) || currentUser;
+    }, [allUsers, currentUser]);
+
     if (!isAuthenticated) return <LoginPage onLogin={handleLogin} users={allUsers} />;
 
     return (
@@ -629,7 +659,7 @@ function App() {
             onAddProject={() => setIsProjectModalOpen(true)}
             onLogout={handleLogout}
             onProfileClick={() => setIsProfileModalOpen(true)}
-            currentUser={currentUser}
+            currentUser={currentUserProfile}
             users={allUsers}
             onMemberClick={(memberId) => {
                 setSelectedMemberId(memberId);
@@ -662,7 +692,7 @@ function App() {
                     selectedMemberId={selectedMemberId}
                     onClearMemberFilter={() => setSelectedMemberId(null)}
                     allUsers={allUsers}
-                    currentUser={currentUser}
+                    currentUser={currentUserProfile}
                     projectFiles={projectFiles}
                     onUploadFile={handleUploadFile}
                     onAddTextAsset={handleAddTextAsset}
@@ -672,7 +702,7 @@ function App() {
             <AddTaskModal
                 isOpen={isModalOpen} initialValues={newTaskDefaults}
                 onClose={() => { setIsModalOpen(false); setEditingTask(null); setNewTaskDefaults(null); }}
-                onSave={handleAddTask} users={allUsers} currentUser={currentUser} projects={projects} taskToEdit={editingTask}
+                onSave={handleAddTask} users={allUsers} currentUser={currentUserProfile} projects={projects} taskToEdit={editingTask}
             />
             <AddProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} onSave={handleAddProject} />
             <AddEventModal
@@ -698,7 +728,7 @@ function App() {
                 }}
                 showToast={showToast}
             />
-            <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} currentUser={currentUser} onUpdateProfile={handleUpdateProfile} users={allUsers} />
+            <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} currentUser={currentUserProfile} onUpdateProfile={handleUpdateProfile} users={allUsers} />
 
             {/* Custom Toast Notification */}
             {toast && (

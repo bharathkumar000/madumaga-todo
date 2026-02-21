@@ -17,7 +17,7 @@ const HourCell = React.memo(({ day, hour }) => {
     );
 });
 
-const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTask, onDeleteTask, onUpdateTask, allUsers = [] }) => {
+const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTask, onDeleteTask, onUpdateTask, allUsers = [], currentUser }) => {
     const [isResizing, setIsResizing] = useState(false);
     const [resizeType, setResizeType] = useState(null); // 'top' or 'bottom'
     const [tempDuration, setTempDuration] = useState(task.duration || 60);
@@ -90,8 +90,14 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
     if (isDragging) return null;
 
     const hourHeight = 50;
-    const assignee = allUsers.find(u => u.id === task.assignedTo) || allUsers.find(u => u.id === task.userId);
-    const assigneeColor = assignee?.color || task.color || 'blue';
+    const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+    const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
+
+    const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+    const myProfile = allUsers.find(u => u.id === currentUser?.id);
+
+    const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === task.userId));
+    const assigneeColor = activeAssignee?.color || 'blue';
 
     const { offset = 0, width = 88 } = layout || {};
 
@@ -185,6 +191,28 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
                 <div className="flex justify-between items-start gap-2 h-full">
                     <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
                         <div>
+                            <div className="flex -space-x-1.5 mb-1 items-center">
+                                {assignees.slice(0, 2).map((u, i) => (
+                                    <div key={u.id} className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-[7px] font-black uppercase border border-[#16191D] shadow-sm
+                                        ${u.color === 'blue' ? 'bg-[#3B82F6]' :
+                                            u.color === 'green' ? 'bg-[#10B981]' :
+                                                u.color === 'rose' ? 'bg-[#F43F5E]' :
+                                                    u.color === 'pink' ? 'bg-[#EC4899]' :
+                                                        u.color === 'teal' ? 'bg-[#14B8A6]' :
+                                                            u.color === 'orange' ? 'bg-[#F97316]' :
+                                                                u.color === 'purple' ? 'bg-[#A855F7]' :
+                                                                    'bg-[#F59E0B]'}`}
+                                        style={{ zIndex: 10 - i }}
+                                    >
+                                        {(u.name?.charAt(0) || 'B').toUpperCase()}
+                                    </div>
+                                ))}
+                                {assignees.length === 0 && (
+                                    <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[7px] font-black uppercase border border-[#16191D]">
+                                        {(task.creatorInitial || 'B').toUpperCase()}
+                                    </div>
+                                )}
+                            </div>
                             <div className={`font-black tracking-tight leading-tight uppercase text-[12px] line-clamp-2 ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                 {task.title}
                             </div>
@@ -252,7 +280,7 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
     );
 });
 
-const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [], projects = [], onUpdateTask, selectedMemberId, onClearMemberFilter, allUsers = [] }) => {
+const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [], projects = [], onUpdateTask, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
     const scrollContainerRef = useRef(null);
     const todayRef = useRef(null);
     const [columnWidth, setColumnWidth] = useState(0);
@@ -499,6 +527,7 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                                                     onDeleteTask={onDeleteTask}
                                                     onUpdateTask={onUpdateTask}
                                                     allUsers={allUsers}
+                                                    currentUser={currentUser}
                                                 />
                                             );
                                         });
