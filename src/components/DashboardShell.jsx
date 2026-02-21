@@ -38,7 +38,7 @@ const dropAnimation = {
     }),
 };
 
-const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser }) => {
+const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, onUpdateProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser, projectFiles, onUploadFile, onAddTextAsset, onDeleteFile }) => {
     const [activeTask, setActiveTask] = useState(null);
     const [activeProject, setActiveProject] = useState(null);
 
@@ -219,7 +219,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
         } else if (over) {
             // Dropped on a column or task in a column
             const overId = over.id;
-            const validContainers = ['WAITING', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
+            const validContainers = ['waiting', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
 
             let targetStatus = overId;
             const realOverId = getRealId(overId);
@@ -289,7 +289,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
     }, [filteredTasks]);
 
     const boardTasks = useMemo(() => {
-        return filteredTasks.filter(t => t.date || (t.status !== 'WAITING' && t.status !== 'todo' && t.status));
+        return filteredTasks.filter(t => t.date || (t.status !== 'waiting' && t.status !== 'todo' && t.status));
     }, [filteredTasks]);
 
     return (
@@ -323,7 +323,12 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                 onBack={() => setSelectedProjectId(null)}
                                 onToggleTask={onToggleTask}
                                 onDeleteProject={onDeleteProject}
+                                onUpdateProject={onUpdateProject}
                                 currentUser={currentUser}
+                                projectFiles={projectFiles}
+                                onUploadFile={onUploadFile}
+                                onAddTextAsset={onAddTextAsset}
+                                onDeleteFile={onDeleteFile}
                             />
                         ) : (
                             <MemoizedProjectsView

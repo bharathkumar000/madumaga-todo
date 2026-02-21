@@ -1,7 +1,7 @@
 import { X, Calendar, MapPin, Info, Bell, ArrowRight, Pencil, Folder, Link as LinkIcon, Compass, Sparkles, Box, Check, Trash2, Trophy, Users, Plus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 
-const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, onUpdateEvent, projects = [], users = [] }) => {
+const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, onUpdateEvent, projects = [], users = [], allEvents = [], onAddSubEvent, showToast }) => {
     if (!event) return null;
 
     const [isAddingMember, setIsAddingMember] = useState(null); // teamId being added to
@@ -14,11 +14,13 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
             'HACKATHON': 'from-pink-500 to-rose-500',
             'WORKSHOP': 'from-purple-500 to-indigo-600',
             'MEETUP': 'from-blue-400 to-cyan-500',
-            'CONFERENCE': 'from-amber-400 to-orange-500'
+            'CONFERENCE': 'from-amber-400 to-orange-500',
+            'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]'
         };
         return colors[t] || fallbackColor;
     };
     const eventColor = getTypeColor(event.type, event.color);
+    const nestedEvents = allEvents.filter(e => String(e.parentId) === String(event.id));
 
     const teams = event.teams || [];
 
@@ -132,7 +134,8 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                         'HACKATHON': 'text-pink-500',
                                         'WORKSHOP': 'text-purple-500',
                                         'MEETUP': 'text-blue-400',
-                                        'CONFERENCE': 'text-amber-500'
+                                        'CONFERENCE': 'text-amber-500',
+                                        'COLLECTION': 'text-[#4F46E5]'
                                     };
                                     return colors[t] || 'text-primary';
                                 };
@@ -300,6 +303,59 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                 </div>
                             )}
                         </div>
+
+                        {/* Collection Contents Section */}
+                        {event.type === 'COLLECTION' && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-white/40 font-bold text-[10px] uppercase tracking-widest">
+                                        <Box size={14} />
+                                        <span>Collection Contents</span>
+                                    </div>
+                                    <button
+                                        onClick={() => onAddSubEvent(event.id)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#4F46E5]/10 border border-[#4F46E5]/20 hover:bg-[#4F46E5]/20 transition-all text-[10px] font-bold text-[#4F46E5] uppercase tracking-wider"
+                                    >
+                                        <Plus size={12} />
+                                        Add Sub-Event
+                                    </button>
+                                </div>
+
+                                {nestedEvents.length === 0 ? (
+                                    <div className="p-8 rounded-2xl border border-dashed border-white/5 bg-white/[0.01] text-center">
+                                        <p className="text-gray-600 text-[11px] font-medium uppercase tracking-widest italic">No events in this collection yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-2">
+                                        {nestedEvents.map(subEvent => (
+                                            <div key={subEvent.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all flex items-center justify-between group/sub">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${getTypeColor(subEvent.type, subEvent.color)}`} />
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-white uppercase tracking-tight">{subEvent.title}</h4>
+                                                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{subEvent.date} • {subEvent.type}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => onEdit(subEvent)}
+                                                        className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-white transition-colors"
+                                                    >
+                                                        <Pencil size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onDelete(subEvent.id)}
+                                                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-gray-500 hover:text-rose-500 transition-colors"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Resources & Info Section */}
                         <div className="grid grid-cols-1 gap-8">

@@ -13,6 +13,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     const [projectId, setProjectId] = useState('');
     const [won, setWon] = useState(false);
     const [links, setLinks] = useState([{ label: '', url: '' }]);
+    const [parentId, setParentId] = useState(null);
     const [isFromCalendarOpen, setIsFromCalendarOpen] = useState(false);
     const [isToCalendarOpen, setIsToCalendarOpen] = useState(false);
     const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
@@ -38,6 +39,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
         setProjectId('');
         setWon(false);
         setLinks([{ label: '', url: '' }]);
+        setParentId(null);
     };
 
     useEffect(() => {
@@ -61,6 +63,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             setBuildingDescription(eventToEdit.buildingDescription || '');
             setProjectId(eventToEdit.projectId?.toString() || '');
             setLinks(eventToEdit.links?.length > 0 ? [...eventToEdit.links] : [{ label: '', url: '' }]);
+            setParentId(eventToEdit.parentId || null);
         } else {
             resetForm();
         }
@@ -102,7 +105,8 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             'HACKATHON': 'from-pink-500 to-rose-500',
             'MEETUP': 'from-blue-400 to-cyan-500',
             'WORKSHOP': 'from-purple-500 to-pink-600',
-            'CONFERENCE': 'from-amber-400 to-orange-500'
+            'CONFERENCE': 'from-amber-400 to-orange-500',
+            'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]'
         };
 
         const t = (type || '').toUpperCase();
@@ -121,7 +125,8 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             buildingDescription,
             projectId: projectId?.toString(),
             won: type === 'HACKATHON' ? won : false,
-            links: links.filter(l => l.label && l.url)
+            links: links.filter(l => l.label && l.url),
+            parentId: parentId
         });
 
         resetForm();
@@ -349,7 +354,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
 
                                 {isTypeDropdownOpen && (
                                     <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200">
-                                        {['HACKATHON', 'MEETUP', 'WORKSHOP', 'CONFERENCE'].map(t => (
+                                        {['HACKATHON', 'COLLECTION', 'MEETUP', 'WORKSHOP', 'CONFERENCE'].map(t => (
                                             <button
                                                 key={t}
                                                 onClick={() => { setType(t); setIsTypeDropdownOpen(false); }}

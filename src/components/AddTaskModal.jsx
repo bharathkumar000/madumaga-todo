@@ -27,6 +27,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
     const [priority, setPriority] = useState('High');
     const [description, setDescription] = useState('');
     const [isPriorityOpen, setIsPriorityOpen] = useState(false);
+    const [titleError, setTitleError] = useState(false);
 
     // Derived color based on first assignee
     const firstAssignee = users.find(u => selectedAssigneeIds.includes(u.id));
@@ -105,32 +106,43 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
     if (!isOpen) return null;
 
     const handleSave = () => {
-        if (!title.trim()) return;
+        if (!title.trim()) {
+            setTitleError(true);
+            setTimeout(() => setTitleError(false), 2000);
+            return;
+        }
 
         const selectedProject = projects.find(p => String(p.id) === String(selectedProjectId));
 
-        const [y, m, d_val] = date.split('-').map(Number);
-        const selectedDate = new Date(y, m - 1, d_val);
-        const today = startOfDay(new Date());
-        const taskDate = startOfDay(selectedDate);
+        let selectedDate = null;
+        let status = 'waiting';
 
-        let status = 'WAITING';
-        if (date) {
-            if (isBefore(taskDate, today)) {
-                status = 'DELAYED';
-            } else if (isSameDay(taskDate, today)) {
-                status = 'TODAY';
-            } else if (isBefore(taskDate, endOfWeek(today, { weekStartsOn: 0 }))) {
-                status = 'THIS_WEEK';
-            } else if (isBefore(taskDate, endOfMonth(today))) {
-                status = 'THIS_MONTH';
-            } else {
-                status = 'UPCOMING';
+        if (date && date.includes('-')) {
+            const [y, m, d_val] = date.split('-').map(Number);
+            selectedDate = new Date(y, m - 1, d_val);
+            const today = startOfDay(new Date());
+            const taskDate = startOfDay(selectedDate);
+
+            if (!isNaN(taskDate.getTime())) {
+                if (isBefore(taskDate, today)) {
+                    status = 'DELAYED';
+                } else if (isSameDay(taskDate, today)) {
+                    status = 'TODAY';
+                } else if (isBefore(taskDate, endOfWeek(today, { weekStartsOn: 0 }))) {
+                    status = 'THIS_WEEK';
+                } else if (isBefore(taskDate, endOfMonth(today))) {
+                    status = 'THIS_MONTH';
+                } else {
+                    status = 'UPCOMING';
+                }
             }
         }
 
         // Use first assignee for legacy fields, but send full list
         const primaryAssignee = users.find(u => selectedAssigneeIds.includes(u.id));
+
+        // CRITICAL: projectId must be null (not empty string) for Supabase UUID foreign key
+        const safeProjectId = selectedProjectId && selectedProjectId !== '' ? selectedProjectId : null;
 
         onSave({
             title,
@@ -138,17 +150,17 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             status,
             tag: '',
             userId: currentUser?.id, // Creator
-            assignedTo: selectedAssigneeIds.length === 1 ? selectedAssigneeIds[0] : selectedAssigneeIds, // Send single ID if only one for backward compat, or array
+            assignedTo: selectedAssigneeIds.length === 1 ? selectedAssigneeIds[0] : selectedAssigneeIds,
             creatorName: primaryAssignee?.name || currentUser?.name,
             creatorInitial: (primaryAssignee?.name || currentUser?.name)?.charAt(0),
             projectName: selectedProject?.name || '',
-            projectId: selectedProjectId,
+            projectId: safeProjectId,
             color: derivedColor,
             isGradient: true,
             priority,
             description,
-            date: date ? selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
-            rawDate: date ? selectedDate.toISOString() : ''
+            date: selectedDate ? selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+            rawDate: selectedDate ? selectedDate.toISOString() : ''
         });
         setTitle('');
         setType('Task');
@@ -211,11 +223,12 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                 type="text"
                                 placeholder="Add title"
                                 value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full bg-transparent text-2xl font-black text-white placeholder-gray-600 border-none focus:ring-0 focus:outline-none transition-all"
+                                onChange={(e) => { setTitle(e.target.value); setTitleError(false); }}
+                                className={`w-full bg-transparent text-2xl font-black text-white placeholder-gray-600 border-none focus:ring-0 focus:outline-none transition-all ${titleError ? 'placeholder-red-500 animate-[shake_0.3s_ease-in-out]' : ''}`}
                                 autoFocus
                             />
-                            <div className="h-[1px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent mt-1"></div>
+                            <div className={`h-[1px] w-full bg-gradient-to-r mt-1 transition-all ${titleError ? 'from-red-500 to-red-500/30' : 'from-cyan-500/50 to-transparent'}`}></div>
+                            {titleError && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase tracking-widest">Title is required</p>}
                         </div>
 
                         {/* Assignee Selection */}
@@ -271,7 +284,9 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                     onClick={() => setIsCalendarOpen(!isCalendarOpen)}
                                     className="text-xs text-gray-300 cursor-pointer hover:text-white transition-colors block w-full text-left py-1"
                                 >
-                                    {new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                    {date && date.includes('-') && !isNaN(new Date(date).getTime())
+                                        ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                        : 'No Date Set'}
                                 </button>
 
                                 {/* Custom Calendar Popup */}
