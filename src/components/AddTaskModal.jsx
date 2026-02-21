@@ -150,7 +150,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             status,
             tag: '',
             userId: currentUser?.id, // Creator
-            assignedTo: selectedAssigneeIds.length === 1 ? selectedAssigneeIds[0] : selectedAssigneeIds,
+            assignedTo: selectedAssigneeIds,
             creatorName: primaryAssignee?.name || currentUser?.name,
             creatorInitial: (primaryAssignee?.name || currentUser?.name)?.charAt(0),
             projectName: selectedProject?.name || '',
