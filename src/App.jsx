@@ -17,6 +17,7 @@ function App() {
     const [tasks, setTasks] = useState([]);
     const [projects, setProjects] = useState([]);
     const [events, setEvents] = useState([]);
+    const [projectFiles, setProjectFiles] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -29,6 +30,12 @@ function App() {
     const [eventToEdit, setEventToEdit] = useState(null);
     const [editingTask, setEditingTask] = useState(null);
     const [selectedMemberId, setSelectedMemberId] = useState(null);
+    const [toast, setToast] = useState(null);
+
+    const showToast = useCallback((message, type = 'error') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    }, []);
 
     // 1. Auth State Listener
     useEffect(() => {
@@ -90,6 +97,10 @@ function App() {
                 const { data: usersData, error: usersError } = await supabase.from('users').select('*');
                 if (usersError) throw usersError;
                 if (usersData) setAllUsers(usersData);
+
+                const { data: filesData, error: filesError } = await supabase.from('project_files').select('*');
+                if (filesError) throw filesError;
+                if (filesData) setProjectFiles(filesData);
             } catch (err) {
                 console.error("Critical Error Fetching Data:", err.message);
             }
@@ -125,7 +136,7 @@ function App() {
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
-                const mapEv = (e) => ({ ...e, toDate: e.to_date, buildingDescription: e.building_description, projectId: e.project_id, userId: e.user_id, teams: e.teams || [] });
+                const mapEv = (e) => ({ ...e, toDate: e.to_date, buildingDescription: e.building_description, projectId: e.project_id, userId: e.user_id, teams: e.teams || [], parentId: e.parent_id });
                 if (payload.eventType === 'INSERT') {
                     setEvents(prev => [...prev, mapEv(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
@@ -140,6 +151,13 @@ function App() {
                     setAllUsers(prev => [...prev, payload.new]);
                 } else if (payload.eventType === 'UPDATE') {
                     setAllUsers(prev => prev.map(u => u.id === payload.new.id ? payload.new : u));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'project_files' }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setProjectFiles(prev => [...prev, payload.new]);
+                } else if (payload.eventType === 'DELETE') {
+                    setProjectFiles(prev => prev.filter(f => f.id !== payload.old.id));
                 }
             })
             .subscribe();
@@ -221,43 +239,70 @@ function App() {
 
     const handleAddTask = async (taskData) => {
         try {
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                showToast("You must be logged in to sync tasks.");
+                return;
+            }
+
             const primaryAssignee = Array.isArray(taskData.assignedTo) ? taskData.assignedTo[0] : taskData.assignedTo;
+            const safeProjectId = (taskData.projectId && taskData.projectId !== '') ? taskData.projectId : null;
+
+            const fullPayload = {
+                task_name: taskData.title,
+                project_id: safeProjectId,
+                user_id: user.id,
+                status: taskData.status || 'waiting',
+                assigned_to: primaryAssignee || null,
+                priority: taskData.priority,
+                date: taskData.date || null,
+                time: taskData.time || null,
+                raw_date: taskData.rawDate || null,
+                color: taskData.color || null,
+                description: taskData.description || null
+            };
 
             if (editingTask) {
-                const mappedUpdates = {
-                    task_name: taskData.title,
-                    project_id: taskData.projectId || null,
-                    assigned_to: primaryAssignee,
-                    raw_date: taskData.rawDate || null,
-                    status: taskData.status,
-                    priority: taskData.priority,
-                    date: taskData.date || null,
-                    time: taskData.time || null,
-                    color: taskData.color || null,
-                    description: taskData.description || null
-                };
-
-                const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', editingTask.id);
-                if (error) throw error;
+                const { error: updateError } = await supabase.from('tasks').update(fullPayload).eq('id', editingTask.id);
+                if (updateError) {
+                    console.error("Update failed, trying bare minimum update:", updateError.message);
+                    // Minimal fallback update
+                    const { error: retryError } = await supabase.from('tasks').update({
+                        task_name: taskData.title,
+                        description: taskData.description || null
+                    }).eq('id', editingTask.id);
+                    if (retryError) showToast("Update failed: " + retryError.message);
+                }
                 setEditingTask(null);
             } else {
-                const { data: { user } } = await supabase.auth.getUser();
-                const { data, error } = await supabase.from('tasks').insert([{
-                    task_name: taskData.title,
-                    project_id: taskData.projectId || null,
-                    user_id: user?.id,
-                    status: taskData.status || "WAITING",
-                    assigned_to: primaryAssignee,
-                    priority: taskData.priority,
-                    date: taskData.date || null,
-                    time: taskData.time || null,
-                    raw_date: taskData.rawDate || null,
-                    color: taskData.color || null,
-                    description: taskData.description || null
-                }]).select();
+                // Try Full Insert First
+                const { data, error: insertError } = await supabase.from('tasks').insert([fullPayload]).select();
 
-                if (error) throw error;
-                if (data && data.length > 0) {
+                if (insertError) {
+                    console.error("Full Sync failed:", insertError.message);
+
+                    // FALLBACK: Try a "Bare Minimum" insert if the table is missing columns
+                    // Note: If project_id is NOT NULL in DB, this might still fail if project_id is null
+                    const barePayload = {
+                        task_name: taskData.title,
+                        user_id: user.id,
+                        description: taskData.description || null
+                    };
+
+                    // Only add project_id to bare payload if we actually have one
+                    if (safeProjectId) barePayload.project_id = safeProjectId;
+
+                    const { data: bareData, error: bareError } = await supabase.from('tasks').insert([barePayload]).select();
+
+                    if (bareError) {
+                        showToast("DATABASE ERROR: " + bareError.message);
+                        return;
+                    }
+
+                    if (bareData && bareData.length > 0) {
+                        setTasks(prev => [...prev, mapTask(bareData[0])]);
+                    }
+                } else if (data && data.length > 0) {
                     setTasks(prev => {
                         if (prev.find(t => t.id === data[0].id)) return prev;
                         return [...prev, mapTask(data[0])];
@@ -265,7 +310,8 @@ function App() {
                 }
             }
         } catch (error) {
-            console.error("Error in handleAddTask:", error);
+            console.error("Critical error in handleAddTask:", error);
+            showToast("Unexpected error: " + error.message);
         }
     };
 
@@ -303,6 +349,7 @@ function App() {
                 won: newEvent.won,
                 links: newEvent.links || [],
                 teams: newEvent.teams || [],
+                parent_id: newEvent.parentId || null,
                 user_id: (await supabase.auth.getUser()).data.user?.id,
                 completed: false
             };
@@ -379,7 +426,12 @@ function App() {
         try {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
-            const { error } = await supabase.from('tasks').update({ completed: !task.completed }).eq('id', taskId);
+
+            // Optimistic Update
+            const newCompleted = !task.completed;
+            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: newCompleted } : t));
+
+            const { error } = await supabase.from('tasks').update({ completed: newCompleted }).eq('id', taskId);
             if (error) throw error;
         } catch (error) {
             console.error("Error toggling task:", error);
@@ -388,22 +440,28 @@ function App() {
 
     const handleDeleteTask = useCallback(async (taskId) => {
         try {
+            // Optimistic Update
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+
             const { error } = await supabase.from('tasks').delete().eq('id', taskId);
             if (error) throw error;
         } catch (error) {
             console.error("Error deleting task:", error);
         }
     }, []);
-
     const handleDuplicateTask = useCallback(async (taskId) => {
         try {
             const taskToDuplicate = tasks.find(t => t.id === taskId);
             if (!taskToDuplicate) return;
+
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
             const { id, ...data } = taskToDuplicate;
-            const { error } = await supabase.from('tasks').insert([{
+            const { data: newTasks, error } = await supabase.from('tasks').insert([{
                 task_name: `${data.title} (Copy)`,
                 project_id: data.projectId || null,
-                user_id: (await supabase.auth.getUser()).data.user?.id,
+                user_id: user.id,
                 status: data.status || 'todo',
                 assigned_to: data.assignedTo || null,
                 priority: data.priority || null,
@@ -411,13 +469,21 @@ function App() {
                 time: data.time || null,
                 color: data.color || null,
                 description: data.description || null
-            }]);
+            }]).select();
+
             if (error) throw error;
+
+            if (newTasks && newTasks[0]) {
+                const mapped = mapTask(newTasks[0]);
+                setTasks(prev => {
+                    if (prev.find(t => t.id === mapped.id)) return prev;
+                    return [...prev, mapped];
+                });
+            }
         } catch (error) {
             console.error("Error duplicating task:", error);
         }
-    }, [tasks]);
-
+    }, [tasks, mapTask]);
     const handleUpdateTask = useCallback(async (taskId, updates) => {
         try {
             const mappedUpdates = {};
@@ -449,11 +515,107 @@ function App() {
         }
     };
 
+    const handleUpdateProject = useCallback(async (projectId, updates) => {
+        try {
+            const mappedUpdates = {};
+            if (updates.name) mappedUpdates.title = updates.name;
+            if (updates.description !== undefined) mappedUpdates.description = updates.description;
+            if (updates.status) mappedUpdates.status = updates.status;
+
+            if (Object.keys(mappedUpdates).length === 0) return;
+
+            // Optimistic update
+            setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updates } : p));
+
+            const { error } = await supabase.from('projects').update(mappedUpdates).eq('id', projectId);
+            if (error) throw error;
+        } catch (error) {
+            console.error("Error updating project:", error);
+        }
+    }, []);
+
     const handleEditTask = (taskId) => {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
             setEditingTask(task);
             setIsModalOpen(true);
+        }
+    };
+
+    const handleUploadFile = async (projectId, file) => {
+        try {
+            const fileName = `${Date.now()}_${file.name}`;
+            const filePath = `project_${projectId}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('project-files')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('project-files')
+                .getPublicUrl(filePath);
+
+            const fileData = {
+                project_id: projectId,
+                file_name: file.name,
+                file_url: publicUrl,
+                file_size: file.size,
+                file_type: file.type,
+                user_id: currentUser.id
+            };
+
+            const { data, error: dbError } = await supabase.from('project_files').insert([fileData]).select();
+            if (dbError) throw dbError;
+
+            if (data && data[0]) {
+                setProjectFiles(prev => [...prev, data[0]]);
+                showToast("Asset deployed successfully", "success");
+            }
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            showToast("Deployment failed: " + error.message);
+        }
+    };
+
+    const handleDeleteFile = async (fileId, fileUrl) => {
+        try {
+            const filePathArr = fileUrl.split('project-files/');
+            if (filePathArr.length > 1) {
+                const filePath = filePathArr[1];
+                await supabase.storage.from('project-files').remove([filePath]);
+            }
+
+            const { error } = await supabase.from('project_files').delete().eq('id', fileId);
+            if (error) throw error;
+        } catch (error) {
+            console.error("Error deleting file:", error);
+        }
+    };
+
+    const handleAddTextAsset = async (projectId, title, content) => {
+        try {
+            const assetData = {
+                project_id: projectId,
+                file_name: title,
+                file_url: null,
+                file_size: content.length,
+                file_type: 'text/plain',
+                content: content,
+                user_id: currentUser.id
+            };
+
+            const { data, error: dbError } = await supabase.from('project_files').insert([assetData]).select();
+            if (dbError) throw dbError;
+
+            if (data && data[0]) {
+                setProjectFiles(prev => [...prev, data[0]]);
+                showToast("Text asset injected", "success");
+            }
+        } catch (error) {
+            console.error("Error saving text asset:", error);
+            showToast("Injection failed: " + error.message);
         }
     };
 
@@ -496,10 +658,15 @@ function App() {
                     onEditTask={handleEditTask}
                     onUpdateTask={handleUpdateTask}
                     onDeleteProject={handleDeleteProject}
+                    onUpdateProject={handleUpdateProject}
                     selectedMemberId={selectedMemberId}
                     onClearMemberFilter={() => setSelectedMemberId(null)}
                     allUsers={allUsers}
                     currentUser={currentUser}
+                    projectFiles={projectFiles}
+                    onUploadFile={handleUploadFile}
+                    onAddTextAsset={handleAddTextAsset}
+                    onDeleteFile={handleDeleteFile}
                 />
             )}
             <AddTaskModal
@@ -508,9 +675,46 @@ function App() {
                 onSave={handleAddTask} users={allUsers} currentUser={currentUser} projects={projects} taskToEdit={editingTask}
             />
             <AddProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} onSave={handleAddProject} />
-            <AddEventModal isOpen={isEventModalOpen} onClose={() => { setIsEventModalOpen(false); setEventToEdit(null); }} onSave={handleAddEvent} projects={projects} eventToEdit={eventToEdit} />
-            <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onEdit={handleEditEvent} onDelete={handleDeleteEvent} onToggleComplete={handleToggleEventComplete} onUpdateEvent={handleUpdateEvent} projects={projects} users={allUsers} />
+            <AddEventModal
+                isOpen={isEventModalOpen}
+                onClose={() => { setIsEventModalOpen(false); setEventToEdit(null); }}
+                onSave={handleAddEvent}
+                projects={projects}
+                eventToEdit={eventToEdit}
+            />
+            <EventDetailModal
+                event={selectedEvent}
+                onClose={() => setSelectedEvent(null)}
+                onEdit={handleEditEvent}
+                onDelete={handleDeleteEvent}
+                onToggleComplete={handleToggleEventComplete}
+                onUpdateEvent={handleUpdateEvent}
+                projects={projects}
+                users={allUsers}
+                allEvents={events}
+                onAddSubEvent={(parentId) => {
+                    setEventToEdit({ parentId });
+                    setIsEventModalOpen(true);
+                }}
+                showToast={showToast}
+            />
             <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} currentUser={currentUser} onUpdateProfile={handleUpdateProfile} users={allUsers} />
+
+            {/* Custom Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-5 duration-300">
+                    <div className={`px-6 py-4 rounded-[20px] border shadow-2xl flex items-center gap-4 min-w-[320px] backdrop-blur-xl ${toast.type === 'error'
+                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                        }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${toast.type === 'error' ? 'bg-rose-500/20' : 'bg-emerald-500/20'
+                            }`}>
+                            {toast.type === 'error' ? <X size={16} strokeWidth={3} /> : <Check size={16} strokeWidth={3} />}
+                        </div>
+                        <span className="text-[13px] font-black uppercase tracking-widest">{toast.message}</span>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 }
