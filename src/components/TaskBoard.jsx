@@ -277,7 +277,7 @@ const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditT
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-1 text-gray-400 text-sm font-medium">
                         <span className="text-secondary"><Calendar size={16} /></span>
-                        <span className="uppercase">{selectedMember ? `${selectedMember.name}'S Agenda` : 'Agenda'}</span>
+                        <span className="uppercase">{selectedMember ? `${(selectedMember.name || 'Team member').toUpperCase()}'S Agenda` : 'Agenda'}</span>
                     </div>
                 </div>
                 {selectedMemberId && (

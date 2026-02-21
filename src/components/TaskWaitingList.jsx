@@ -3,19 +3,23 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Inbox, Plus, Check, Trash2, Copy, Pencil } from 'lucide-react';
+import { Inbox, Plus, Check, Trash2, Copy, Pencil, Calendar } from 'lucide-react';
 
-const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [] }) => {
+const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: `waiting-${task.id}`,
         data: { type: 'Task', task }
     });
 
-    const assignee = allUsers.find(u => u.id === task.assignedTo) || allUsers.find(u => u.id === task.userId);
-    const assigneeColor = assignee?.color || task.color || 'blue';
-    const initial = (assignee?.name?.charAt(0) || task.creatorInitial || 'B')?.toUpperCase();
+    const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+    const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
 
-    // 3 Colors: Blue (Bharath), Green (Srinivas), Amber/Yellow (Rishith)
+    const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+    const myProfile = allUsers.find(u => u.id === currentUser?.id);
+
+    const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === task.userId));
+    const assigneeColor = activeAssignee?.color || 'blue';
+
     const taskColor = assigneeColor === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
         assigneeColor === 'green' ? 'rgba(16, 185, 129, 0.4)' :
             (assigneeColor === 'amber' || assigneeColor === 'yellow') ? 'rgba(245, 158, 11, 0.4)' :
@@ -82,45 +86,60 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
             )}
 
             <div className="relative z-10">
-                {/* Row 1: Avatar + Title */}
-                <div className="flex items-center gap-2.5 mb-3">
-                    <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black text-white shadow-lg border-2 border-white/20 flex-shrink-0"
-                        style={{
-                            backgroundColor:
-                                assigneeColor === 'blue' ? '#3B82F6' :
-                                    assigneeColor === 'green' ? '#10B981' :
-                                        (assigneeColor === 'amber' || assigneeColor === 'yellow') ? '#F59E0B' :
-                                            assigneeColor === 'rose' ? '#F43F5E' :
-                                                assigneeColor === 'pink' ? '#EC4899' :
-                                                    assigneeColor === 'teal' ? '#14B8A6' :
-                                                        assigneeColor === 'orange' ? '#F97316' :
-                                                            assigneeColor === 'purple' ? '#A855F7' : '#F59E0B'
-                        }}
-                    >
-                        {initial}
+                {/* Row 1: Avatar + Title + Project */}
+                <div className="flex items-center gap-2 mb-3 justify-between">
+                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                        <div className="flex -space-x-1.5 flex-shrink-0 mt-0.5">
+                            {assignees.slice(0, 2).map((u, i) => (
+                                <div key={u.id} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-lg border-2 border-[#16191D] relative overflow-hidden transition-transform
+                                    ${u.color === 'blue' ? 'bg-[#3B82F6]' :
+                                        u.color === 'green' ? 'bg-[#10B981]' :
+                                            u.color === 'rose' ? 'bg-[#F43F5E]' :
+                                                u.color === 'pink' ? 'bg-[#EC4899]' :
+                                                    u.color === 'teal' ? 'bg-[#14B8A6]' :
+                                                        u.color === 'orange' ? 'bg-[#F97316]' :
+                                                            u.color === 'purple' ? 'bg-[#A855F7]' :
+                                                                'bg-[#F59E0B]'}`}
+                                    style={{ zIndex: 10 - i }}
+                                >
+                                    {(u.name?.charAt(0) || 'B').toUpperCase()}
+                                </div>
+                            ))}
+                            {assignees.length === 0 && (
+                                <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-[#16191D] flex items-center justify-center text-[8px] font-black text-white">
+                                    {(task.creatorInitial || 'B').toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                        <h3 className="text-base font-black text-white uppercase tracking-tight leading-tight drop-shadow-sm line-clamp-1 flex-1">
+                            {task.title}
+                        </h3>
                     </div>
-                    <h3 className="text-base font-black text-white uppercase tracking-tight leading-tight drop-shadow-sm line-clamp-2">
-                        {task.title}
-                    </h3>
+                    {(task.projectName || (task.tag && task.tag !== 'NEW')) && (
+                        <div className="px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[7px] font-black text-gray-500 uppercase tracking-widest shrink-0 max-w-[80px] truncate text-right">
+                            {task.projectName || task.tag}
+                        </div>
+                    )}
                 </div>
+
                 {task.description && (
                     <p className="text-[10px] text-gray-500 font-medium italic mb-3 line-clamp-2 px-1 border-l border-white/10 ml-1">
                         {task.description}
                     </p>
                 )}
 
-                {/* Row 2: Badges (left) + Action icons pill (right) */}
-                <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1">
+                {/* Footer: Date + Actions */}
+                <div className="flex items-center justify-between gap-1.5 mt-auto pt-2 border-t border-white/5">
+                    <div className="flex items-center gap-1 flex-1">
                         {task.priority && (
                             <div className="px-2 py-1 rounded-md bg-white/10 border border-white/10 text-[8px] font-black text-cyan-400 uppercase tracking-widest">
                                 {task.priority}
                             </div>
                         )}
-                        {(task.projectName || (task.tag && task.tag !== 'NEW')) && (
-                            <div className="px-2 py-1 rounded-md bg-white/10 border border-white/10 text-[8px] font-black text-gray-300 uppercase tracking-widest line-clamp-2 max-w-[120px]">
-                                {task.projectName || task.tag}
+                        {task.date && (
+                            <div className="flex items-center gap-1 text-[8px] text-gray-400 font-bold uppercase tracking-widest bg-white/5 px-2 py-1 rounded border border-white/5">
+                                <Calendar size={10} strokeWidth={3} />
+                                <span>{task.date}</span>
                             </div>
                         )}
                     </div>
@@ -157,9 +176,9 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
     );
 };
 
-const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [] }) => {
+const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
     const { setNodeRef, isOver } = useDroppable({
-        id: 'WAITING',
+        id: 'waiting',
     });
 
     return (
@@ -192,6 +211,7 @@ const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, on
                             onDuplicateTask={onDuplicateTask}
                             onEditTask={onEditTask}
                             allUsers={allUsers}
+                            currentUser={currentUser}
                         />
                     ))}
                 </SortableContext>
@@ -204,7 +224,7 @@ const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, on
 
             <div className="px-2 pt-4">
                 <button
-                    onClick={() => onAddTask({ date: null, status: 'WAITING' })}
+                    onClick={() => onAddTask({ date: null, status: 'waiting' })}
                     className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] text-gray-400 transition-all flex items-center justify-center gap-2 active:scale-95 group shadow-lg"
                 >
                     <Plus size={14} className="text-cyan-400 group-hover:scale-110 transition-transform" />

@@ -646,7 +646,17 @@ function App() {
     };
 
     const currentUserProfile = useMemo(() => {
-        return allUsers.find(u => u.id === currentUser?.id) || currentUser;
+        const profile = allUsers.find(u => u.id === currentUser?.id);
+        if (profile) return profile;
+        if (currentUser) {
+            return {
+                ...currentUser,
+                name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0],
+                color: 'blue',
+                avatar: currentUser.user_metadata?.avatar_url
+            };
+        }
+        return null;
     }, [allUsers, currentUser]);
 
     if (!isAuthenticated) return <LoginPage onLogin={handleLogin} users={allUsers} />;
