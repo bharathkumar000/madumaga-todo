@@ -19,7 +19,7 @@ const TaskBankView = ({ tasks = [], allUsers = [], projects = [] }) => {
         switch (status) {
             case 'DELAYED': return <AlertCircle size={14} className="text-rose-500" />;
             case 'TODAY': return <Clock size={14} className="text-pink-500" />;
-            case 'WAITING': return <Circle size={14} className="text-gray-500" />;
+            case 'waiting': return <Circle size={14} className="text-gray-500" />;
             default: return <Circle size={14} className="text-blue-500" />;
         }
     };
@@ -58,7 +58,7 @@ const TaskBankView = ({ tasks = [], allUsers = [], projects = [] }) => {
                         <option value="ALL">All Status</option>
                         <option value="TODAY">Today</option>
                         <option value="DELAYED">Delayed</option>
-                        <option value="WAITING">Waiting</option>
+                        <option value="waiting">Waiting</option>
                         <option value="THIS_WEEK">This Week</option>
                     </select>
                 </div>
@@ -116,8 +116,8 @@ const TaskBankView = ({ tasks = [], allUsers = [], projects = [] }) => {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
                                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-lg ${assignee?.color === 'blue' ? 'bg-blue-500' :
-                                                        assignee?.color === 'green' ? 'bg-emerald-500' :
-                                                            assignee?.color === 'rose' ? 'bg-rose-500' : 'bg-gray-600'
+                                                    assignee?.color === 'green' ? 'bg-emerald-500' :
+                                                        assignee?.color === 'rose' ? 'bg-rose-500' : 'bg-gray-600'
                                                     }`}>
                                                     {assignee?.name?.charAt(0) || '?'}
                                                 </div>

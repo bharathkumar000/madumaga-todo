@@ -53,7 +53,7 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
                 <div className="flex items-center gap-3">
                     <CheckSquare className="text-secondary" />
                     <h2 className="text-2xl font-bold uppercase">
-                        {selectedMember ? `${selectedMember.name}'s Tasks` : 'All Tasks'}
+                        {selectedMember ? `${(selectedMember.name || 'Unknown').toUpperCase()}'s Tasks` : 'All Tasks'}
                     </h2>
                     {selectedMember && (
                         <span className="text-xs text-gray-500 font-medium">
@@ -75,7 +75,7 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
             {filteredTasks.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center">
                     <p className="text-gray-500 text-sm font-medium">
-                        {selectedMember ? `No tasks assigned to ${selectedMember.name.toUpperCase()}` : 'No tasks yet'}
+                        {selectedMember ? `No tasks assigned to ${(selectedMember.name || 'this member').toUpperCase()}` : 'No tasks yet'}
                     </p>
                 </div>
             ) : (
