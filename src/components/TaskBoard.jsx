@@ -1,5 +1,5 @@
 // src/components/TaskBoard.jsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MoreHorizontal, Calendar, Check, Trash2, Pencil, Copy, RotateCw } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
