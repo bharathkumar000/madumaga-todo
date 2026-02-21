@@ -30,7 +30,8 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [] }) =>
                             'HACKATHON': 'from-pink-500 to-rose-500',
                             'WORKSHOP': 'from-purple-500 to-indigo-600',
                             'MEETUP': 'from-blue-400 to-cyan-500',
-                            'CONFERENCE': 'from-amber-400 to-orange-500'
+                            'CONFERENCE': 'from-amber-400 to-orange-500',
+                            'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]'
                         };
                         return colors[t] || fallbackColor;
                     };
@@ -40,7 +41,8 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [] }) =>
                             'HACKATHON': 'text-pink-500',
                             'WORKSHOP': 'text-purple-500',
                             'MEETUP': 'text-blue-400',
-                            'CONFERENCE': 'text-amber-500'
+                            'CONFERENCE': 'text-amber-500',
+                            'COLLECTION': 'text-[#4F46E5]'
                         };
                         return colors[t] || 'text-primary';
                     };
