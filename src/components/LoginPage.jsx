@@ -33,7 +33,6 @@ const LoginPage = ({ onLogin, users }) => {
         } catch (err) {
             console.error("Login Error:", err);
             setError(err.message || 'Sign in failed. Please try again.');
-            alert("Access Denied: " + (err.message || 'Check credentials'));
             setIsLoading(false);
         }
     };
