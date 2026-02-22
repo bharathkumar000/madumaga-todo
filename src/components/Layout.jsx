@@ -117,12 +117,6 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                             active={currentView === 'achievements'}
                             onClick={() => onNavigate('achievements')}
                         />
-                        <NavItem
-                            icon={<Database size={20} />}
-                            label="Task Bank"
-                            active={currentView === 'task-bank'}
-                            onClick={() => onNavigate('task-bank')}
-                        />
 
                         {/* Team Section */}
                         <div className="mt-8 mb-2 px-2">

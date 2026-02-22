@@ -49,27 +49,13 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
 
     return (
         <div className="flex flex-col h-full bg-[#0B0D10] text-white p-6 overflow-y-auto custom-scrollbar">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <CheckSquare className="text-secondary" />
-                    <h2 className="text-2xl font-bold uppercase">
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                    <CheckSquare className="text-secondary w-6 h-6" />
+                    <h2 className="text-3xl font-black uppercase tracking-tight italic">
                         {selectedMember ? `${(selectedMember.name || 'Unknown').toUpperCase()}'s Tasks` : 'All Tasks'}
                     </h2>
-                    {selectedMember && (
-                        <span className="text-xs text-gray-500 font-medium">
-                            ({filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''})
-                        </span>
-                    )}
                 </div>
-                {selectedMemberId && (
-                    <button
-                        onClick={onClearMemberFilter}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 text-[10px] font-black text-gray-400 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest active:scale-95 group"
-                    >
-                        <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
-                        Refresh
-                    </button>
-                )}
             </div>
 
             {filteredTasks.length === 0 ? (
@@ -125,7 +111,7 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
                                                                                 'bg-[#F59E0B]'}`}
                                                     style={{ zIndex: 10 - i }}
                                                 >
-                                                    {(u.name?.charAt(0) || 'B').toUpperCase()}
+                                                    {u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}
                                                 </div>
                                             ))}
                                             {assignees.length === 0 && (
