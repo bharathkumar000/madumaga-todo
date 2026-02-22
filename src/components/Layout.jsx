@@ -64,7 +64,11 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                                                         currentUser.color === 'orange' ? 'bg-[#F97316] shadow-orange-500/20' :
                                                             currentUser.color === 'purple' ? 'bg-[#A855F7] shadow-purple-500/20' :
                                                                 'bg-[#F59E0B] shadow-amber-500/20'}`}>
-                                    {currentUser.avatar || currentUser.name?.charAt(0) || currentUser.email?.charAt(0) || '?'}
+                                    {currentUser.avatar && (currentUser.avatar.startsWith('http') || currentUser.avatar.startsWith('https')) ? (
+                                        <img src={currentUser.avatar} alt="" className="w-full h-full object-cover rounded" />
+                                    ) : (
+                                        <span>{currentUser.avatar || currentUser.name?.charAt(0) || currentUser.email?.charAt(0) || '?'}</span>
+                                    )}
                                 </div>
                                 <div className="flex flex-col overflow-hidden">
                                     <span className="text-[14px] font-black text-white truncate uppercase italic tracking-tight">{currentUser.name || currentUser.email?.split('@')[0]}</span>
@@ -143,7 +147,11 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                                                                         member.color === 'orange' ? 'bg-[#F97316] shadow-orange-500/20' :
                                                                             member.color === 'purple' ? 'bg-[#A855F7] shadow-purple-500/20' :
                                                                                 'bg-[#F59E0B] shadow-amber-500/20'}`}>
-                                                    {member.avatar || member.name?.charAt(0) || '?'}
+                                                    {member.avatar && (member.avatar.startsWith('http') || member.avatar.startsWith('https')) ? (
+                                                        <img src={member.avatar} alt="" className="w-full h-full object-cover rounded" />
+                                                    ) : (
+                                                        <span>{member.avatar || member.name?.charAt(0) || '?'}</span>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col overflow-hidden flex-1">
                                                     <span className="text-[12px] font-bold text-gray-400 group-hover:text-white transition-colors uppercase tracking-tight truncate">{member.name}</span>

@@ -354,7 +354,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
 
                                 {isTypeDropdownOpen && (
                                     <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200">
-                                        {['HACKATHON', 'COLLECTION', 'MEETUP', 'WORKSHOP', 'CONFERENCE'].map(t => (
+                                        {['HACKATHON', 'COLLECTION', 'WORKSHOP'].map(t => (
                                             <button
                                                 key={t}
                                                 onClick={() => { setType(t); setIsTypeDropdownOpen(false); }}

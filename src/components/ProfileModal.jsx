@@ -81,7 +81,11 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                                                         color === 'pink' ? '#EC4899' :
                                                             '#F59E0B'
                             }}>
-                            {avatar || name.charAt(0) || 'U'}
+                            {avatar && (avatar.startsWith('http') || avatar.startsWith('https')) ? (
+                                <img src={avatar} alt="" className="w-full h-full object-cover rounded-2xl" />
+                            ) : (
+                                <span className={avatar ? "text-3xl" : ""}>{avatar || name.charAt(0) || 'U'}</span>
+                            )}
                         </div>
                     </div>
                 </div>
