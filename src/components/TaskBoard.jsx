@@ -133,7 +133,7 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                                             zIndex: 10 - i
                                         }}
                                     >
-                                        <span className="relative z-10">{(u.name?.charAt(0) || 'B').toUpperCase()}</span>
+                                        <span className="relative z-10">{u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}</span>
                                     </div>
                                 ))}
                                 {assignees.length === 0 && (
@@ -217,7 +217,7 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 });
 
