@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { ChevronLeft, Target, CheckCircle2, PlayCircle, Trash2, FileText, Upload, X, Clock, Edit2, Check } from 'lucide-react';
+import ConfirmationModal from './ConfirmationModal';
 
 const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProject, onUpdateProject, projectFiles = [], onUploadFile, onAddTextAsset, onDeleteFile, currentUser }) => {
     const [activeTab, setActiveTab] = useState('planning');
@@ -9,6 +10,7 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
     const [textAssetData, setTextAssetData] = useState({ title: '', content: '' });
     const [viewingAsset, setViewingAsset] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const fileInputRef = useRef(null);
 
     if (!project) return null;
@@ -86,7 +88,7 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                             <Edit2 size={18} />
                         </button>
                         <button
-                            onClick={() => onDeleteProject(project.id)}
+                            onClick={() => setShowDeleteConfirm(true)}
                             className="p-3 rounded-full bg-white/[0.03] border border-white/10 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-95"
                         >
                             <Trash2 size={18} />
@@ -502,6 +504,19 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                         </div>
                     </div>
                 </div>
+            )}
+            {showDeleteConfirm && (
+                <ConfirmationModal
+                    isOpen={showDeleteConfirm}
+                    title="Delete Project?"
+                    message="Are you sure you want to permanently delete this project and all its associations? This action cannot be undone."
+                    onConfirm={() => {
+                        onDeleteProject(project.id);
+                        setShowDeleteConfirm(false);
+                    }}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                    confirmText="Permanently Delete"
+                />
             )}
         </div>
     );
