@@ -1,8 +1,8 @@
 // src/components/Layout.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Home, List, CheckSquare, Calendar as CalendarIcon, Settings, Plus, LogIn, Trophy, Award, Database } from 'lucide-react';
+import { Home, List, CheckSquare, Calendar as CalendarIcon, Settings, Plus, LogIn, Trophy, Award, Database, RotateCw } from 'lucide-react';
 
-const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProject, onLogout, onProfileClick, currentUser, users = [], onMemberClick }) => {
+const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProject, onLogout, onProfileClick, currentUser, users = [], onMemberClick, onRefresh }) => {
     const [sidebarWidth, setSidebarWidth] = useState(220);
     const [isResizing, setIsResizing] = useState(false);
     const sidebarRef = useRef(null);
@@ -131,7 +131,13 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-gray-300">TECH NEXUS</span>
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-tighter">Pro</span>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onRefresh?.(); }}
+                                        className="p-1 rounded bg-white/5 border border-white/10 text-gray-500 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                                        title="Refresh Data"
+                                    >
+                                        <RotateCw size={10} />
+                                    </button>
                                 </div>
                                 <div className="space-y-1">
                                     {sortedMembers.map(member => {

@@ -65,50 +65,51 @@ function App() {
         description: t.description
     }), []);
 
+    const handleRefresh = useCallback(async () => {
+        if (!currentUser?.id) return;
+        try {
+            const { data: tasksData, error: tasksError } = await supabase.from('tasks').select('*');
+            if (tasksError) throw tasksError;
+            if (tasksData) setTasks(tasksData.map(mapTask));
+
+            const { data: projectsData, error: projError } = await supabase.from('projects').select('*');
+            if (projError) throw projError;
+            if (projectsData) setProjects(projectsData.map(p => ({
+                ...p,
+                name: p.title,
+                id: p.id,
+                userId: p.user_id
+            })));
+
+            const { data: eventsData, error: eventsError } = await supabase.from('events').select('*');
+            if (eventsError) throw eventsError;
+            if (eventsData) setEvents(eventsData.map(e => ({
+                ...e,
+                toDate: e.to_date,
+                buildingDescription: e.building_description,
+                projectId: e.project_id,
+                userId: e.user_id,
+                teams: e.teams || [],
+                parentId: e.parent_id
+            })));
+
+            const { data: usersData, error: usersError } = await supabase.from('users').select('*');
+            if (usersError) throw usersError;
+            if (usersData) setAllUsers(usersData);
+
+            const { data: filesData, error: filesError } = await supabase.from('project_files').select('*');
+            if (filesError) throw filesError;
+            if (filesData) setProjectFiles(filesData);
+        } catch (err) {
+            console.error("Critical Error Fetching Data:", err.message);
+        }
+    }, [currentUser?.id, mapTask]);
+
     // 2. Real-time Data Sync (Tasks, Projects, Events)
     useEffect(() => {
         if (!currentUser?.id) return;
 
-        const fetchData = async () => {
-            try {
-                const { data: tasksData, error: tasksError } = await supabase.from('tasks').select('*');
-                if (tasksError) throw tasksError;
-                if (tasksData) setTasks(tasksData.map(mapTask));
-
-                const { data: projectsData, error: projError } = await supabase.from('projects').select('*');
-                if (projError) throw projError;
-                if (projectsData) setProjects(projectsData.map(p => ({
-                    ...p,
-                    name: p.title,
-                    id: p.id,
-                    userId: p.user_id
-                })));
-
-                const { data: eventsData, error: eventsError } = await supabase.from('events').select('*');
-                if (eventsError) throw eventsError;
-                if (eventsData) setEvents(eventsData.map(e => ({
-                    ...e,
-                    toDate: e.to_date,
-                    buildingDescription: e.building_description,
-                    projectId: e.project_id,
-                    userId: e.user_id,
-                    teams: e.teams || [],
-                    parentId: e.parent_id
-                })));
-
-                const { data: usersData, error: usersError } = await supabase.from('users').select('*');
-                if (usersError) throw usersError;
-                if (usersData) setAllUsers(usersData);
-
-                const { data: filesData, error: filesError } = await supabase.from('project_files').select('*');
-                if (filesError) throw filesError;
-                if (filesData) setProjectFiles(filesData);
-            } catch (err) {
-                console.error("Critical Error Fetching Data:", err.message);
-            }
-        };
-
-        fetchData();
+        handleRefresh();
 
         // Realtime Subscriptions
         const channel = supabase
@@ -418,18 +419,42 @@ function App() {
 
     const handleDeleteEvent = async (eventId) => {
         try {
-            // Optimistic Update
-            setEvents(prev => prev.filter(e => e.id !== eventId));
+            // Find if this event has children (for collections)
+            const children = events.filter(e => String(e.parentId) === String(eventId));
+            const childIds = children.map(c => c.id);
+
+            // Optimistic Update: Remove parent and all children
+            setEvents(prev => prev.filter(e => e.id !== eventId && !childIds.includes(e.id)));
             setSelectedEvent(null);
 
-            const { error } = await supabase.from('events').delete().eq('id', eventId);
-            if (error) {
-                // Rollback if needed (complex because we need the deleted event back)
-                showToast("Failed to delete event: " + error.message);
-                // For now, at least notify the user
+            // 1. Delete the parent event
+            const { error: parentError } = await supabase.from('events').delete().eq('id', eventId);
+            if (parentError) throw parentError;
+
+            // 2. Delete all sub-events if they exist
+            if (childIds.length > 0) {
+                const { error: childrenError } = await supabase.from('events').delete().in('id', childIds);
+                if (childrenError) {
+                    console.error("Failed to delete sub-events:", childrenError.message);
+                }
             }
+
+            showToast("Event purged successfully", "success");
         } catch (error) {
             console.error("Error deleting event:", error);
+            showToast("Failed to delete event: " + error.message);
+
+            // Re-fetch to sync state on failure
+            const { data } = await supabase.from('events').select('*');
+            if (data) setEvents(data.map(e => ({
+                ...e,
+                toDate: e.to_date,
+                buildingDescription: e.building_description,
+                projectId: e.project_id,
+                userId: e.user_id,
+                teams: e.teams || [],
+                parentId: e.parent_id
+            })));
         }
     };
 
@@ -569,14 +594,14 @@ function App() {
     const handleUpdateTask = useCallback(async (taskId, updates) => {
         try {
             const mappedUpdates = {};
-            if (updates.title) mappedUpdates.task_name = updates.title;
-            if (updates.projectId) mappedUpdates.project_id = updates.projectId;
-            if (updates.assignedTo) mappedUpdates.assigned_to = updates.assignedTo;
-            if (updates.rawDate) mappedUpdates.raw_date = updates.rawDate;
-            if (updates.status) mappedUpdates.status = updates.status;
-            if (updates.priority) mappedUpdates.priority = updates.priority;
-            if (updates.date) mappedUpdates.date = updates.date;
-            if (updates.time) mappedUpdates.time = updates.time;
+            if (updates.title !== undefined) mappedUpdates.task_name = updates.title;
+            if (updates.projectId !== undefined) mappedUpdates.project_id = updates.projectId;
+            if (updates.assignedTo !== undefined) mappedUpdates.assigned_to = updates.assignedTo;
+            if (updates.rawDate !== undefined) mappedUpdates.raw_date = updates.rawDate;
+            if (updates.status !== undefined) mappedUpdates.status = updates.status;
+            if (updates.priority !== undefined) mappedUpdates.priority = updates.priority;
+            if (updates.date !== undefined) mappedUpdates.date = updates.date;
+            if (updates.time !== undefined) mappedUpdates.time = updates.time;
             if (updates.description !== undefined) mappedUpdates.description = updates.description;
 
             if (Object.keys(mappedUpdates).length === 0) return;
@@ -740,6 +765,10 @@ function App() {
             onMemberClick={(memberId) => {
                 setSelectedMemberId(memberId);
                 if (['events', 'achievements', 'projects', 'task-bank'].includes(currentView)) setCurrentView('dashboard');
+            }}
+            onRefresh={() => {
+                handleRefresh();
+                setSelectedMemberId(null);
             }}
         >
             {currentView === 'events' ? (

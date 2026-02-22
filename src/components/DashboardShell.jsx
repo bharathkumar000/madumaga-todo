@@ -20,7 +20,9 @@ import {
     useSensor,
     useSensors,
     defaultDropAnimationSideEffects,
-    closestCorners
+    closestCorners,
+    pointerWithin,
+    rectIntersection
 } from '@dnd-kit/core';
 import { ChevronLeft, Target, Calendar, CheckCircle2, PlayCircle, Clock, Trash2, Folder } from 'lucide-react';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -36,6 +38,23 @@ const dropAnimation = {
             },
         },
     }),
+};
+
+// Custom collision detection: prioritize "waiting" droppable when pointer is over it
+const waitingFirstCollision = (args) => {
+    // First, check if pointer is within any droppable
+    const pointerCollisions = pointerWithin(args);
+
+    // If pointer is within the waiting list droppable, prioritize it
+    const waitingCollision = pointerCollisions.find(
+        c => c.id === 'waiting' || String(c.id).startsWith('waiting-')
+    );
+    if (waitingCollision) {
+        return [waitingCollision];
+    }
+
+    // Otherwise, fall back to closestCorners for calendar slots and board columns
+    return closestCorners(args);
 };
 
 const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, onUpdateProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser, projectFiles, onUploadFile, onAddTextAsset, onDeleteFile, selectedProjectId, setSelectedProjectId }) => {
@@ -103,11 +122,11 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
         document.body.classList.add('is-dragging');
         const realId = getRealId(active.id);
         if (active.data.current?.type === 'Task') {
-            const task = tasks.find(t => t.id === realId);
+            const task = tasks.find(t => String(t.id) === String(realId));
             setActiveTask(task);
             setActiveProject(null);
         } else if (active.data.current?.type === 'Project') {
-            const project = projects.find(p => p.id === realId);
+            const project = projects.find(p => String(p.id) === String(realId));
             setActiveProject(project);
             setActiveTask(null);
         }
@@ -123,7 +142,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
         const realActiveId = getRealId(activeId);
         const realOverId = getRealId(overId);
 
-        if (realActiveId === realOverId) return;
+        if (String(realActiveId) === String(realOverId)) return;
 
         const isActiveTask = active.data.current?.type === 'Task';
         const isOverTask = over.data.current?.type === 'Task';
@@ -133,8 +152,8 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
         // Project Reordering
         if (isActiveProject && isOverProject) {
             setProjects((items) => {
-                const oldIndex = items.findIndex((i) => i.id === realActiveId);
-                const newIndex = items.findIndex((i) => i.id === realOverId);
+                const oldIndex = items.findIndex((i) => String(i.id) === String(realActiveId));
+                const newIndex = items.findIndex((i) => String(i.id) === String(realOverId));
                 return arrayMove(items, oldIndex, newIndex);
             });
             return;
@@ -149,21 +168,60 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             // We no longer setTasks here. Status changes happen in handleDragEnd.
         }
 
-        // Moving Task over Column - defer to handleDragEnd
-        // No local state mutation here.
+        // Moving Task over Column
+        if (!isOverTask && overId) {
+            const validContainers = ['waiting', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
+            if (validContainers.includes(overId) || String(overId).startsWith('waiting-')) {
+                // No local state mutation needed for preview, but we can log or trigger visual changes
+            }
+        }
     };
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
 
-        if (over && over.id.toString().includes('T')) {
-            // It's likely a calendar slot (ISO string includes 'T')
-            // Format: "2023-10-27T10:00:00.000Z-14" (Day-Hour)
+        if (!over) {
+            setActiveTask(null);
+            setActiveProject(null);
+            document.body.classList.remove('is-dragging');
+            return;
+        }
+
+        const overIdStr = over.id.toString();
+
+        // PRIORITY 1: Check if dropped on waiting list FIRST (before calendar check)
+        // This must come first because 'waiting' contains 't' which would falsely match the old calendar check
+        if (overIdStr === 'waiting' || overIdStr.startsWith('waiting-')) {
+            const realActiveId = getRealId(active.id);
+            const updates = {
+                status: 'waiting',
+                date: '',
+                time: '',
+                rawDate: ''
+            };
+
+            // Optimistic: update UI instantly
+            setTasks(prev => prev.map(t =>
+                String(t.id) === String(realActiveId) ? { ...t, ...updates } : t
+            ));
+            // Then sync to database in background
+            onUpdateTask(realActiveId, updates);
+
+            setActiveTask(null);
+            setActiveProject(null);
+            document.body.classList.remove('is-dragging');
+            return;
+        }
+
+        // PRIORITY 2: Check if it's a calendar slot drop
+        // Calendar slot IDs look like: "2023-10-27T10:00:00.000Z-14" (ISO date + hyphen + hour)
+        // Use a proper regex to match ISO date format, NOT just checking for 'T'
+        const calendarSlotPattern = /^\d{4}-\d{2}-\d{2}T/;
+        if (calendarSlotPattern.test(overIdStr)) {
             try {
-                const idString = over.id.toString();
-                const lastHyphenIndex = idString.lastIndexOf('-');
-                const dayIso = idString.substring(0, lastHyphenIndex);
-                const hourStr = idString.substring(lastHyphenIndex + 1);
+                const lastHyphenIndex = overIdStr.lastIndexOf('-');
+                const dayIso = overIdStr.substring(0, lastHyphenIndex);
+                const hourStr = overIdStr.substring(lastHyphenIndex + 1);
 
                 const hour = parseInt(hourStr);
                 const date = new Date(dayIso);
@@ -202,67 +260,71 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
                 // Optimistic: update UI instantly
                 setTasks(prev => prev.map(t =>
-                    t.id === realActiveId ? { ...t, ...updates } : t
+                    String(t.id) === String(realActiveId) ? { ...t, ...updates } : t
                 ));
-                // Then sync to Firestore in background
+                // Then sync to database in background
                 onUpdateTask(realActiveId, updates);
 
             } catch (e) {
                 console.error("Failed to parse calendar drop", e);
             }
-        } else if (over) {
-            // Dropped on a column or task in a column
-            const overId = over.id;
-            const validContainers = ['waiting', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
 
-            let targetStatus = overId;
-            if (String(overId).startsWith('waiting-')) {
-                targetStatus = 'waiting';
+            setActiveTask(null);
+            setActiveProject(null);
+            document.body.classList.remove('is-dragging');
+            return;
+        }
+
+        // PRIORITY 3: Dropped on a board column or task within a column
+        const overId = over.id;
+        const validContainers = ['DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
+
+        let targetStatus = overId;
+
+        const realOverId = getRealId(overId);
+        const realActiveId = getRealId(active.id);
+
+        if (!validContainers.includes(targetStatus)) {
+            const overTask = tasks.find(t => String(t.id) === String(realOverId));
+            if (overTask) {
+                targetStatus = overTask.status;
             }
+        }
 
-            const realOverId = getRealId(overId);
-            const realActiveId = getRealId(active.id);
+        if (validContainers.includes(targetStatus)) {
+            const updates = { status: targetStatus };
+            const today = new Date();
 
-            if (!validContainers.includes(targetStatus)) {
-                const overTask = tasks.find(t => t.id === realOverId);
-                if (overTask) targetStatus = overTask.status;
-            }
-
-            if (validContainers.includes(targetStatus)) {
-                const updates = { status: targetStatus };
-                const today = new Date();
-
-                if (targetStatus === 'TODAY') {
-                    updates.date = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                    updates.time = '10:00 AM';
-                    updates.rawDate = today.toISOString();
-                } else if (targetStatus === 'THIS_WEEK') {
-                    const nextDay = new Date(today);
-                    nextDay.setDate(today.getDate() + 1);
-                    updates.date = nextDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                    updates.time = '11:00 AM';
-                    updates.rawDate = nextDay.toISOString();
-                } else if (targetStatus === 'waiting' || targetStatus === 'NO_DUE_DATE') {
-                    updates.date = '';
-                    updates.time = '';
-                    updates.rawDate = '';
-                } else if (targetStatus === 'DELAYED') {
-                    const task = tasks.find(t => t.id === realActiveId);
-                    if (!task?.date) {
-                        const yesterday = new Date(today);
-                        yesterday.setDate(today.getDate() - 1);
-                        updates.date = yesterday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                        updates.rawDate = yesterday.toISOString();
-                    }
+            if (targetStatus === 'TODAY') {
+                updates.date = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                updates.time = '10:00 AM';
+                updates.rawDate = today.toISOString();
+            } else if (targetStatus === 'THIS_WEEK') {
+                const nextDay = new Date(today);
+                nextDay.setDate(today.getDate() + 1);
+                updates.date = nextDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                updates.time = '11:00 AM';
+                updates.rawDate = nextDay.toISOString();
+            } else if (targetStatus === 'NO_DUE_DATE') {
+                updates.date = '';
+                updates.time = '';
+                updates.rawDate = '';
+            } else if (targetStatus === 'DELAYED') {
+                const task = tasks.find(t => String(t.id) === String(realActiveId));
+                if (!task?.date) {
+                    const yesterday = new Date(today);
+                    yesterday.setDate(today.getDate() - 1);
+                    updates.date = yesterday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                    updates.rawDate = yesterday.toISOString();
                 }
-
-                // Optimistic: update UI instantly
-                setTasks(prev => prev.map(t =>
-                    t.id === realActiveId ? { ...t, ...updates } : t
-                ));
-                // Then sync to Firestore in background
-                onUpdateTask(realActiveId, updates);
             }
+
+            // Optimistic: update UI instantly
+            setTasks(prev => prev.map(t =>
+                String(t.id) === String(realActiveId) ? { ...t, ...updates } : t
+            ));
+            // Then sync to database in background
+            onUpdateTask(realActiveId, updates);
         }
 
         setActiveTask(null);
@@ -279,8 +341,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                 ? t.assignedTo
                 : (typeof t.assignedTo === 'string' ? t.assignedTo.split(',') : (t.assignedTo ? [t.assignedTo] : []));
 
-            const isAssigned = ids.some(id => String(id) === String(selectedMemberId));
-            return isAssigned || String(t.userId) === String(selectedMemberId);
+            return ids.some(id => String(id) === String(selectedMemberId));
         });
     }, [tasks, selectedMemberId]);
 
@@ -298,7 +359,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
-            collisionDetection={closestCorners}
+            collisionDetection={waitingFirstCollision}
         >
             <div className="flex flex-1 h-full w-full">
                 {/* Center Column: Board or Calendar */}
@@ -393,9 +454,9 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             </div>
             <DragOverlay dropAnimation={dropAnimation}>
                 {activeTask ? (
-                    <div className="w-[240px] pointer-events-none">
+                    <div className="w-[200px] pointer-events-none">
                         <div
-                            className={`relative px-2 py-1.5 rounded-lg border border-white/10 shadow-2xl overflow-hidden bg-[#16191D] scale-105`}
+                            className="relative px-3 py-2.5 rounded-xl border border-white/15 shadow-2xl overflow-hidden bg-[#16191D] scale-105"
                             style={{
                                 backgroundImage: (() => {
                                     const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
@@ -403,10 +464,8 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                     const nonMeAssignees = assignees.filter(u => u.id !== currentUser?.id);
                                     const myProfile = allUsers.find(u => u.id === currentUser?.id);
                                     const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
-
                                     const activeAssignee = nonMeAssignees.length > 0 ? nonMeAssignees[0] : (isMeAssigned ? myProfile : allUsers.find(u => u.id === activeTask.userId));
                                     const c = activeAssignee?.color || 'blue';
-
                                     const taskColor = c === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
                                         c === 'green' ? 'rgba(16, 185, 129, 0.4)' :
                                             (c === 'amber' || c === 'yellow') ? 'rgba(245, 158, 11, 0.4)' :
@@ -415,122 +474,52 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                                         c === 'teal' ? 'rgba(20, 184, 166, 0.4)' :
                                                             c === 'orange' ? 'rgba(249, 115, 22, 0.4)' :
                                                                 c === 'purple' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255,255,255,0.05)';
-                                    return `
-                                        radial-gradient(circle at top right, rgba(0,0,0,0.6) 0%, transparent 50%),
-                                        radial-gradient(circle at bottom right, ${taskColor} 0%, transparent 70%)
-                                    `;
+                                    return `radial-gradient(circle at bottom right, ${taskColor} 0%, transparent 70%)`;
                                 })()
                             }}
                         >
-                            {/* Ambient Glows */}
+                            {/* Ambient Glow */}
                             {(() => {
                                 const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
                                 const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
                                 const nonMeAssignees = assignees.filter(u => u.id !== currentUser?.id);
                                 const myProfile = allUsers.find(u => u.id === currentUser?.id);
                                 const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
-
                                 const activeAssignee = nonMeAssignees.length > 0 ? nonMeAssignees[0] : (isMeAssigned ? myProfile : allUsers.find(u => u.id === activeTask.userId));
                                 const c = activeAssignee?.color || 'blue';
                                 const glowColor = c === 'blue' ? '#3B82F6' : c === 'green' ? '#10B981' : (c === 'amber' || c === 'yellow') ? '#F59E0B' : c === 'rose' ? '#F43F5E' : c === 'pink' ? '#EC4899' : c === 'teal' ? '#14B8A6' : c === 'orange' ? '#F97316' : c === 'purple' ? '#A855F7' : '#8AB4F8';
                                 return (
-                                    <>
-                                        <div
-                                            className="absolute -top-10 -left-10 w-[120px] h-[120px] blur-[45px] rounded-full opacity-30"
-                                            style={{ backgroundColor: glowColor }}
-                                        ></div>
-                                        <div
-                                            className="absolute -bottom-10 -right-10 w-[150px] h-[150px] blur-[45px] rounded-full opacity-90"
-                                            style={{ backgroundColor: glowColor }}
-                                        ></div>
-                                    </>
+                                    <div
+                                        className="absolute -bottom-8 -right-8 w-[100px] h-[100px] blur-[40px] rounded-full opacity-70"
+                                        style={{ backgroundColor: glowColor }}
+                                    ></div>
                                 );
                             })()}
 
-                            <div className="relative z-10 p-1.5">
-                                <div className="flex justify-between items-start gap-2">
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-[12px] font-black tracking-tight leading-tight uppercase text-white mb-1 truncate">
-                                            {activeTask.title}
-                                        </h3>
-                                        <div className="flex flex-col gap-0.5 mt-1">
-                                            <div className="text-[7px] font-black text-white/90 uppercase tracking-widest leading-none">
-                                                {activeTask.time ? `${activeTask.time} — ${(() => {
-                                                    const match = activeTask.time.match(/(\d+):(\d+)\s?(AM|PM)/i);
-                                                    if (!match) return '';
-                                                    let h = parseInt(match[1]);
-                                                    const m = parseInt(match[2]);
-                                                    const ampm = match[3].toUpperCase();
-                                                    if (ampm === 'PM' && h < 12) h += 12;
-                                                    if (ampm === 'AM' && h === 12) h = 0;
-                                                    const d = new Date();
-                                                    d.setHours(h, m + (activeTask.duration || 60));
-                                                    // Note: format is available in DashboardShell or I can just use a simple template
-                                                    const nh = d.getHours();
-                                                    const nm = d.getMinutes();
-                                                    const nampm = nh >= 12 ? 'PM' : 'AM';
-                                                    return `${nh % 12 || 12}:${nm.toString().padStart(2, '0')} ${nampm}`;
-                                                })()}` : 'No Time'}
-                                            </div>
-                                            {activeTask.time && (
-                                                <div className="text-[7px] font-black text-white/40 uppercase tracking-widest leading-none">
-                                                    {(activeTask.duration || 60) >= 60 ? `${Math.floor((activeTask.duration || 60) / 60)}h ${(activeTask.duration || 60) % 60}m` : `${activeTask.duration || 60}m`}
-                                                </div>
-                                            )}
+                            <div className="relative z-10 flex items-center gap-2.5">
+                                {/* Avatar */}
+                                {(() => {
+                                    const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
+                                    const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
+                                    const nonMeAssignees = assignees.filter(u => u.id !== currentUser?.id);
+                                    const myProfile = allUsers.find(u => u.id === currentUser?.id);
+                                    const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+                                    const activeAssignee = nonMeAssignees.length > 0 ? nonMeAssignees[0] : (isMeAssigned ? myProfile : allUsers.find(u => u.id === activeTask.userId));
+                                    const c = activeAssignee?.color || 'blue';
+                                    const bg = c === 'blue' ? '#3B82F6' : c === 'green' ? '#10B981' : (c === 'amber' || c === 'yellow') ? '#F59E0B' : c === 'rose' ? '#F43F5E' : c === 'pink' ? '#EC4899' : c === 'teal' ? '#14B8A6' : c === 'orange' ? '#F97316' : c === 'purple' ? '#A855F7' : '#3B82F6';
+                                    return (
+                                        <div
+                                            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white border border-white/20 shadow-lg shrink-0"
+                                            style={{ backgroundColor: bg }}
+                                        >
+                                            {(activeAssignee?.name?.charAt(0) || activeTask.creatorInitial || 'B').toUpperCase()}
                                         </div>
-                                    </div>
-
-                                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                                        {activeTask.priority && (
-                                            <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border 
-                                                ${activeTask.priority === 'High' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
-                                                    activeTask.priority === 'Mid' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                        'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-                                                {activeTask.priority}
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-1">
-                                            <div className="p-1 rounded bg-white/5 border border-white/5 text-gray-600">
-                                                <Calendar size={10} strokeWidth={3} />
-                                            </div>
-                                            <div className="p-1 rounded-md bg-white/5 border border-white/5 text-gray-600">
-                                                <Calendar size={10} strokeWidth={3} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 mt-2">
-                                    <div className="flex -space-x-1.5">
-                                        {(() => {
-                                            const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
-                                            const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
-                                            return (assignees.length > 0 ? assignees.slice(0, 3) : [{ id: 'creator', color: 'blue', name: activeTask.creatorInitial || 'B' }]).map((u, i) => (
-                                                <div
-                                                    key={u.id}
-                                                    className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white border border-white/20 shadow-lg"
-                                                    style={{
-                                                        background: (() => {
-                                                            const c = u.color || 'blue';
-                                                            return c === 'blue' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' :
-                                                                c === 'green' ? 'linear-gradient(135deg, #10B981, #059669)' :
-                                                                    c === 'amber' || c === 'yellow' ? 'linear-gradient(135deg, #F59E0B, #D97706)' :
-                                                                        c === 'rose' ? 'linear-gradient(135deg, #F43F5E, #E11D48)' :
-                                                                            c === 'pink' ? 'linear-gradient(135deg, #EC4899, #BE185D)' :
-                                                                                'linear-gradient(135deg, #3B82F6, #1D4ED8)';
-                                                        })(),
-                                                        zIndex: 10 - i
-                                                    }}
-                                                >
-                                                    {(u.name?.charAt(0) || 'B').toUpperCase()}
-                                                </div>
-                                            ));
-                                        })()}
-                                    </div>
-                                    <span className="text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-[0.1em] border border-white/5 bg-white/5 text-gray-400">
-                                        {activeTask.tag || 'TASK'}
-                                    </span>
-                                </div>
+                                    );
+                                })()}
+                                {/* Title Only */}
+                                <h3 className="text-sm font-black tracking-tight leading-tight uppercase text-white truncate">
+                                    {activeTask.title}
+                                </h3>
                             </div>
                         </div>
                     </div>
