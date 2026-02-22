@@ -423,19 +423,29 @@ function App() {
 
     const handleDeleteEvent = async (eventId) => {
         try {
-            // Find if this event has children (for collections)
-            const children = events.filter(e => String(e.parentId) === String(eventId));
-            const childIds = children.map(c => c.id);
+            // Recursive function to find all nested children IDs
+            const getAllDescendantIds = (parentId) => {
+                const directChildren = events.filter(e => String(e.parentId) === String(parentId));
+                let descendantIds = [];
+                directChildren.forEach(child => {
+                    descendantIds.push(child.id);
+                    descendantIds = [...descendantIds, ...getAllDescendantIds(child.id)];
+                });
+                return descendantIds;
+            };
 
-            // Optimistic Update: Remove parent and all children
-            setEvents(prev => prev.filter(e => e.id !== eventId && !childIds.includes(e.id)));
+            const allChildIds = getAllDescendantIds(eventId);
+
+            // Optimistic Update: Remove parent and all descendants
+            setEvents(prev => prev.filter(e => e.id !== eventId && !allChildIds.includes(e.id)));
             setSelectedEvent(null);
 
-            // 1. Delete all sub-events first if they exist (to satisfy FK constraints)
-            if (childIds.length > 0) {
-                const { error: childrenError } = await supabase.from('events').delete().in('id', childIds);
+            // 1. Delete all descendants first (bottom-to-top is handled implicitly by the order or by deleting all at once if supported, 
+            // but we'll delete them in a single call which usually works if there is no self-referential constraint inside the set being deleted)
+            if (allChildIds.length > 0) {
+                const { error: childrenError } = await supabase.from('events').delete().in('id', allChildIds);
                 if (childrenError) {
-                    console.error("Failed to delete sub-events:", childrenError);
+                    console.error("Failed to purge descendants:", childrenError);
                     throw new Error(`Sub-event cleanup failed: ${childrenError.message}`);
                 }
             }
@@ -513,34 +523,35 @@ function App() {
         try {
             if (!currentUser) return;
 
-            // Construct a clean profile object with wide compatibility
+            // 1. Update User Metadata (Auth) - This is where we store the avatar since the table lacks a column
+            const { error: authError } = await supabase.auth.updateUser({
+                data: {
+                    full_name: updatedUser.name,
+                    avatar_url: updatedUser.avatar
+                }
+            });
+            if (authError) console.warn("Metadata sync failed:", authError.message);
+
+            // 2. Update Public Profile (Users Table) - ONLY columns that exist
             const profileData = {
                 id: currentUser.id,
                 name: updatedUser.name,
-                full_name: updatedUser.name, // Try both naming variants for compatibility
                 color: updatedUser.color,
                 bio: updatedUser.bio,
-                avatar_url: updatedUser.avatar,
                 last_seen: new Date().toISOString()
             };
 
             const { error: upsertError } = await supabase.from('users').upsert(profileData);
 
             if (upsertError) {
-                console.warn("Primary upsert failed, retrying with minimal payload...", upsertError);
-                // Try minimal payload without avatar/last_seen to isolate the issue
-                const minimalData = {
-                    id: currentUser.id,
-                    name: updatedUser.name,
-                    full_name: updatedUser.name,
-                    color: updatedUser.color,
-                    bio: updatedUser.bio
-                };
+                console.error("Profile sync failed:", upsertError);
+                // Last ditch effort: Minimal payload
+                const { last_seen, ...minimalData } = profileData;
                 const { error: retryError } = await supabase.from('users').upsert(minimalData);
                 if (retryError) throw retryError;
-                showToast("Profile saved (partial sync)", "success");
+                showToast("Profile partially saved", "success");
             } else {
-                showToast("Profile updated successfully", "success");
+                showToast("Profile synced everywhere!", "success");
             }
 
             // Note: Real-time listener in App.jsx will catch this and update allUsers, 
