@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, ExternalLink, Plus, ChevronLeft, Box, Sparkles, Link as LinkIcon, Compass, Pencil, X, Check, Trash2, Folder } from 'lucide-react';
+import ConfirmationModal from './ConfirmationModal';
 
 const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], users = [], onEdit, onDelete, onToggleComplete, onUpdateEvent, onAddSubEvent, showToast, onGoToProject }) => {
     const [activeCollectionId, setActiveCollectionId] = useState(null);
+    const [eventToDelete, setEventToDelete] = useState(null);
 
     const activeCollection = events.find(e => e.id === activeCollectionId);
 
@@ -204,7 +206,7 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                                         <Pencil size={14} /> Edit Collection
                                     </button>
                                     <button
-                                        onClick={() => { if (window.confirm('Delete this collection archive?')) { onDelete(activeCollection.id); setActiveCollectionId(null); } }}
+                                        onClick={() => setEventToDelete(activeCollection)}
                                         className="flex-1 py-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 text-rose-500/60 font-black text-[10px] uppercase tracking-widest hover:bg-rose-500/10 hover:text-rose-500 transition-all flex items-center justify-center gap-2"
                                     >
                                         <Trash2 size={14} /> Delete Archive
@@ -264,8 +266,8 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                                                                 {sub.type}
                                                             </span>
                                                             <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <button onClick={() => onEdit(sub)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"><Pencil size={12} /></button>
-                                                                <button onClick={() => onDelete(sub.id)} className="p-1.5 rounded-lg bg-rose-500/5 hover:bg-rose-500/10 text-gray-600 hover:text-rose-500 transition-all"><Trash2 size={12} /></button>
+                                                                <button onClick={(e) => { e.stopPropagation(); onEdit(sub); }} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"><Pencil size={12} /></button>
+                                                                <button onClick={(e) => { e.stopPropagation(); setEventToDelete(sub); }} className="p-1.5 rounded-lg bg-rose-500/5 hover:bg-rose-500/10 text-gray-600 hover:text-rose-500 transition-all"><Trash2 size={12} /></button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -391,6 +393,24 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                     );
                 })}
             </div>
+
+            {eventToDelete && (
+                <ConfirmationModal
+                    isOpen={!!eventToDelete}
+                    title={eventToDelete.type === 'COLLECTION' ? 'Delete Collection?' : 'Delete Event?'}
+                    message={`Are you sure you want to delete "${eventToDelete.title}"? This action is permanent and will remove all associated data.`}
+                    onConfirm={() => {
+                        onDelete(eventToDelete.id);
+                        if (eventToDelete.id === activeCollectionId) {
+                            setActiveCollectionId(null);
+                        }
+                        setEventToDelete(null);
+                    }}
+                    onCancel={() => setEventToDelete(null)}
+                    confirmText="Delete Permanently"
+                    type="danger"
+                />
+            )}
         </div>
     );
 };

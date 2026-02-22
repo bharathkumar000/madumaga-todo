@@ -293,7 +293,6 @@ const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditT
                 <Column id="THIS_MONTH" title="This month" color="border-t-orange-300" tasks={getTasksByStatus('THIS_MONTH')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
                 <Column id="UPCOMING" title="Upcoming" color="border-t-yellow-500" tasks={getTasksByStatus('UPCOMING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
                 <Column id="waiting" title="Waiting List" color="border-t-gray-500" tasks={getTasksByStatus('waiting')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
-                <Column id="NO_DUE_DATE" title="No due date" color="border-t-teal-500" tasks={getTasksByStatus('NO_DUE_DATE')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
             </div>
         </div>
     );

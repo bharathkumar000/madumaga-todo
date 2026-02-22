@@ -48,7 +48,7 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
             style={style}
             {...listeners}
             {...attributes}
-            className={`p-3 rounded-lg border border-white/10 cursor-grab active:cursor-grabbing shadow-xl group relative overflow-hidden w-full transition-all duration-300
+            className={`p-2 rounded-xl border border-white/10 cursor-grab active:cursor-grabbing shadow-xl group relative overflow-hidden w-full transition-all duration-300
                 ${task.completed ? 'opacity-50 grayscale-[0.5]' : 'hover:border-white/20 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)]'}
             `}
         >
@@ -87,40 +87,33 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
             )}
 
             <div className="relative z-10">
-                {/* Row 1: Avatar + Title + Project */}
-                <div className="flex items-center gap-2 mb-3 justify-between">
-                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                        <div className="flex -space-x-1.5 flex-shrink-0 mt-0.5">
-                            {assignees.slice(0, 2).map((u, i) => (
-                                <div key={u.id} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-lg border-2 border-[#16191D] relative overflow-hidden transition-transform
-                                    ${u.color === 'blue' ? 'bg-[#3B82F6]' :
-                                        u.color === 'green' ? 'bg-[#10B981]' :
-                                            u.color === 'rose' ? 'bg-[#F43F5E]' :
-                                                u.color === 'pink' ? 'bg-[#EC4899]' :
-                                                    u.color === 'teal' ? 'bg-[#14B8A6]' :
-                                                        u.color === 'orange' ? 'bg-[#F97316]' :
-                                                            u.color === 'purple' ? 'bg-[#A855F7]' :
-                                                                'bg-[#F59E0B]'}`}
-                                    style={{ zIndex: 10 - i }}
-                                >
-                                    {(u.name?.charAt(0) || 'B').toUpperCase()}
-                                </div>
-                            ))}
-                            {assignees.length === 0 && (
-                                <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-[#16191D] flex items-center justify-center text-[8px] font-black text-white">
-                                    {(task.creatorInitial || 'B').toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-                        <h3 className="text-base font-black text-white uppercase tracking-tight leading-tight drop-shadow-sm line-clamp-1 flex-1">
-                            {task.title}
-                        </h3>
+                {/* Row 1: Avatar + Title */}
+                <div className="flex items-center gap-2.5 mb-2 flex-1 min-w-0">
+                    <div className="flex -space-x-1 flex-shrink-0">
+                        {assignees.slice(0, 2).map((u, i) => (
+                            <div key={u.id} className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-lg border border-[#16191D] relative overflow-hidden transition-transform
+                                ${u.color === 'blue' ? 'bg-[#3B82F6]' :
+                                    u.color === 'green' ? 'bg-[#10B981]' :
+                                        u.color === 'rose' ? 'bg-[#F43F5E]' :
+                                            u.color === 'pink' ? 'bg-[#EC4899]' :
+                                                u.color === 'teal' ? 'bg-[#14B8A6]' :
+                                                    u.color === 'orange' ? 'bg-[#F97316]' :
+                                                        u.color === 'purple' ? 'bg-[#A855F7]' :
+                                                            'bg-[#F59E0B]'}`}
+                                style={{ zIndex: 10 - i }}
+                            >
+                                {(u.name?.charAt(0) || 'B').toUpperCase()}
+                            </div>
+                        ))}
+                        {assignees.length === 0 && (
+                            <div className="w-6 h-6 rounded-full bg-blue-500 border border-[#16191D] flex items-center justify-center text-[9px] font-black text-white shadow-md">
+                                {(task.creatorInitial || 'B').toUpperCase()}
+                            </div>
+                        )}
                     </div>
-                    {(task.projectName || (task.tag && task.tag !== 'NEW')) && (
-                        <div className="px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[7px] font-black text-gray-500 uppercase tracking-widest shrink-0 max-w-[80px] truncate text-right">
-                            {task.projectName || task.tag}
-                        </div>
-                    )}
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight drop-shadow-sm line-clamp-1 flex-1">
+                        {task.title}
+                    </h3>
                 </div>
 
                 {task.description && (
@@ -129,44 +122,43 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
                     </p>
                 )}
 
-                {/* Footer: Date + Actions */}
-                <div className="flex items-center justify-between gap-1.5 mt-auto pt-2 border-t border-white/5">
-                    <div className="flex items-center gap-1 flex-1">
+                {/* Row 2: Priority + Actions */}
+                <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
+                    <div className="flex items-center gap-1.5 flex-1 p-1">
                         {task.priority && (
-                            <div className="px-2 py-1 rounded-md bg-white/10 border border-white/10 text-[8px] font-black text-cyan-400 uppercase tracking-widest">
+                            <div className="px-2 py-0.5 rounded bg-white/10 border border-white/10 text-[8px] font-black text-cyan-400 uppercase tracking-widest">
                                 {task.priority}
                             </div>
                         )}
-                        {task.date && (
-                            <div className="flex items-center gap-1 text-[8px] text-gray-400 font-bold uppercase tracking-widest bg-white/5 px-2 py-1 rounded border border-white/5">
-                                <Calendar size={10} strokeWidth={3} />
-                                <span>{task.date}</span>
+                        {(task.projectName || (task.tag && task.tag !== 'NEW')) && (
+                            <div className="px-1.5 py-0.5 rounded border border-white/5 bg-white/5 text-[8px] font-black text-gray-500 uppercase tracking-[0.15em] shrink-0 max-w-[80px] truncate">
+                                {task.projectName || task.tag}
                             </div>
                         )}
                     </div>
 
-                    <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 scale-90 translate-x-1 group-hover:scale-100 group-hover:translate-x-0 transition-all duration-300">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={(e) => { e.stopPropagation(); onEditTask(task.id); }}
-                            className="p-1.5 rounded-md text-white/40 hover:text-amber-400 hover:bg-black transition-all active:scale-90"
+                            className="p-1 rounded text-white/40 hover:text-amber-400 transition-colors"
                         >
                             <Pencil size={12} strokeWidth={2} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDuplicateTask(task.id); }}
-                            className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-black transition-all active:scale-90"
+                            className="p-1 rounded text-white/40 hover:text-white transition-colors"
                         >
                             <Copy size={12} strokeWidth={2} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
-                            className={`p-1.5 rounded-md transition-all active:scale-90 ${task.completed ? 'text-green-400' : 'text-white/40 hover:text-green-400 hover:bg-black'}`}
+                            className={`p-1 rounded transition-colors ${task.completed ? 'text-green-400' : 'text-white/40 hover:text-green-400'}`}
                         >
                             <Check size={12} strokeWidth={2} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
-                            className="p-1.5 rounded-md text-white/40 hover:text-rose-400 hover:bg-black transition-all active:scale-90"
+                            className="p-1 rounded text-white/40 hover:text-rose-400 transition-colors"
                         >
                             <Trash2 size={12} strokeWidth={2} />
                         </button>
