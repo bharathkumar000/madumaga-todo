@@ -11,6 +11,7 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
     const [viewingAsset, setViewingAsset] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [fileToDelete, setFileToDelete] = useState(null);
     const fileInputRef = useRef(null);
 
     if (!project) return null;
@@ -362,9 +363,9 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onDeleteFile(file.id, file.file_url);
+                                                setFileToDelete(file);
                                             }}
-                                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 text-gray-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100 z-10"
+                                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-10 border border-white/5"
                                         >
                                             <X size={14} strokeWidth={3} />
                                         </button>
@@ -516,6 +517,21 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                     }}
                     onCancel={() => setShowDeleteConfirm(false)}
                     confirmText="Permanently Delete"
+                />
+            )}
+
+            {fileToDelete && (
+                <ConfirmationModal
+                    isOpen={!!fileToDelete}
+                    title="Delete File?"
+                    message={`Are you sure you want to delete "${fileToDelete.file_name}"? This action is permanent and will remove the file from all archives.`}
+                    onConfirm={() => {
+                        onDeleteFile(fileToDelete.id, fileToDelete.file_url);
+                        setFileToDelete(null);
+                    }}
+                    onCancel={() => setFileToDelete(null)}
+                    confirmText="Delete File"
+                    type="danger"
                 />
             )}
         </div>

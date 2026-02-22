@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { format, addHours, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfDay, addDays, subDays } from 'date-fns';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Check, Trash2, RotateCw } from 'lucide-react';
+import { Check, Trash2, RotateCw, Pencil } from 'lucide-react';
 
 const HourCell = React.memo(({ day, hour }) => {
     const { isOver, setNodeRef } = useDroppable({
@@ -17,7 +17,7 @@ const HourCell = React.memo(({ day, hour }) => {
     );
 });
 
-const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTask, onDeleteTask, onUpdateTask, allUsers = [], currentUser }) => {
+const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTask, onDeleteTask, onUpdateTask, onEditTask, allUsers = [], currentUser }) => {
     const [isResizing, setIsResizing] = useState(false);
     const [resizeType, setResizeType] = useState(null); // 'top' or 'bottom'
     const [tempDuration, setTempDuration] = useState(task.duration || 60);
@@ -191,13 +191,12 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
             >
                 {tempDuration === 60 ? (
                     // SPECIAL 1-HOUR HORIZONTAL LAYOUT
-                    <>
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {/* Avatar */}
+                    <div className="flex items-center w-full h-full px-2 gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div className="shrink-0">
                                 {assignees.length > 0 ? (
                                     <div
-                                        className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[12px] font-black uppercase border border-[#16191D] shadow-md
+                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black uppercase border-2 border-[#16191D] shadow-md
                                             ${assignees[0].color === 'blue' ? 'bg-[#3B82F6] border-blue-400/20' :
                                                 assignees[0].color === 'green' ? 'bg-[#10B981] border-emerald-400/20' :
                                                     assignees[0].color === 'rose' ? 'bg-[#F43F5E] border-rose-400/20' :
@@ -207,84 +206,72 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
                                         {(assignees[0].name?.charAt(0) || 'B').toUpperCase()}
                                     </div>
                                 ) : (
-                                    <div className="w-7 h-7 rounded-full bg-blue-500 border border-blue-400/20 flex items-center justify-center text-white text-[12px] font-black uppercase shadow-md">
+                                    <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-blue-400/20 flex items-center justify-center text-white text-[9px] font-black uppercase shadow-md">
                                         {(task.creatorInitial || 'B').toUpperCase()}
                                     </div>
                                 )}
                             </div>
-                            {/* Title */}
-                            <h3 className={`font-black text-xl tracking-tight uppercase truncate ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                            <h3 className={`font-black text-xl tracking-tight leading-tight uppercase truncate drop-shadow-sm ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                                {task.title}
+                            </h3>
+                        </div>
+                    </div>
+                ) : (
+                    // STANDARD VERTICAL LAYOUT (For other durations)
+                    <div className="flex flex-col gap-1.5 h-full">
+                        {/* Row 1: Avatar + Title */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex -space-x-1.5 shrink-0">
+                                {assignees.slice(0, 2).map((u, i) => (
+                                    <div key={u.id} className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black uppercase border-2 border-[#16191D] shadow-sm
+                                        ${u.color === 'blue' ? 'bg-[#3B82F6]' :
+                                            u.color === 'green' ? 'bg-[#10B981]' :
+                                                u.color === 'rose' ? 'bg-[#F43F5E]' :
+                                                    u.color === 'pink' ? 'bg-[#EC4899]' :
+                                                        u.color === 'teal' ? 'bg-[#14B8A6]' :
+                                                            u.color === 'orange' ? 'bg-[#F97316]' :
+                                                                u.color === 'purple' ? 'bg-[#A855F7]' :
+                                                                    'bg-[#F59E0B]'}`}
+                                        style={{ zIndex: 10 - i }}
+                                    >
+                                        {u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}
+                                    </div>
+                                ))}
+                                {assignees.length === 0 && (
+                                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-black uppercase border-2 border-[#16191D] shadow-sm">
+                                        {(task.creatorInitial || 'B').toUpperCase()}
+                                    </div>
+                                )}
+                            </div>
+                            <h3 className={`font-black tracking-tighter uppercase text-lg truncate ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                 {task.title}
                             </h3>
                         </div>
 
-                        {/* Ultra-Small Action Buttons */}
-                        <div className="flex items-center gap-1 shrink-0 pointer-events-auto">
+                        {/* Actions Row - Consolidated between Title and Time */}
+                        <div className="flex items-center gap-1 pointer-events-auto">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEditTask?.(task.id); }}
+                                className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 text-amber-400/40 hover:text-amber-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
+                            >
+                                <Pencil size={12} strokeWidth={3} />
+                            </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
-                                className={`w-8 h-8 rounded-md flex items-center justify-center transition-all active:scale-90 border ${task.completed ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-emerald-400/40 hover:text-emerald-400 hover:bg-black'}`}
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all active:scale-90 border ${task.completed ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-emerald-400/40 hover:text-emerald-400 hover:bg-black'}`}
                             >
-                                <Check size={16} strokeWidth={3} />
+                                <Check size={12} strokeWidth={3} />
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
-                                className="w-8 h-8 rounded-md bg-white/5 border border-white/10 text-rose-400/40 hover:text-rose-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
+                                className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 text-rose-400/40 hover:text-rose-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
                             >
-                                <Trash2 size={16} strokeWidth={3} />
+                                <Trash2 size={12} strokeWidth={3} />
                             </button>
-                        </div>
-                    </>
-                ) : (
-                    // STANDARD VERTICAL LAYOUT (For other durations)
-                    <div className="flex flex-col gap-2 h-full">
-                        {/* Row 1: Avatar + Title | Action Buttons */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <div className="flex -space-x-1.5 shrink-0">
-                                    {assignees.slice(0, 2).map((u, i) => (
-                                        <div key={u.id} className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-black uppercase border-2 border-[#16191D] shadow-md
-                                            ${u.color === 'blue' ? 'bg-[#3B82F6]' :
-                                                u.color === 'green' ? 'bg-[#10B981]' :
-                                                    u.color === 'rose' ? 'bg-[#F43F5E]' :
-                                                        u.color === 'pink' ? 'bg-[#EC4899]' :
-                                                            u.color === 'teal' ? 'bg-[#14B8A6]' :
-                                                                u.color === 'orange' ? 'bg-[#F97316]' :
-                                                                    u.color === 'purple' ? 'bg-[#A855F7]' :
-                                                                        'bg-[#F59E0B]'}`}
-                                            style={{ zIndex: 10 - i }}
-                                        >
-                                            {u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}
-                                        </div>
-                                    ))}
-                                    {assignees.length === 0 && (
-                                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-[12px] font-black uppercase border-2 border-[#16191D] shadow-md">
-                                            {(task.creatorInitial || 'B').toUpperCase()}
-                                        </div>
-                                    )}
-                                </div>
-                                <h3 className={`font-black tracking-tighter uppercase text-2xl truncate ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
-                                    {task.title}
-                                </h3>
-                            </div>
-                            {/* Always-visible Action Buttons */}
-                            <div className="flex items-center gap-1 shrink-0 pointer-events-auto">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
-                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 border ${task.completed ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-emerald-400/40 hover:text-emerald-400 hover:bg-black'}`}
-                                >
-                                    <Check size={16} strokeWidth={3} />
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
-                                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-rose-400/40 hover:text-rose-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
-                                >
-                                    <Trash2 size={16} strokeWidth={3} />
-                                </button>
-                            </div>
                         </div>
 
                         {/* Row 2: Time Range */}
-                        <div className="text-base font-black text-white/90 uppercase tracking-tight leading-none whitespace-nowrap mt-3">
+                        <div className="text-sm font-black text-white/90 uppercase tracking-tight leading-none whitespace-nowrap mt-2">
                             {task.time} — {(() => {
                                 const match = task.time?.match(/(\d+):(\d+)\s?(AM|PM)/i);
                                 if (!match) return '';
@@ -327,7 +314,7 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
     );
 });
 
-const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [], projects = [], onUpdateTask, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
+const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [], projects = [], onUpdateTask, onEditTask, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
     const scrollContainerRef = useRef(null);
     const todayRef = useRef(null);
     const [columnWidth, setColumnWidth] = useState(0);
@@ -574,6 +561,7 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                                                     onToggleTask={onToggleTask}
                                                     onDeleteTask={onDeleteTask}
                                                     onUpdateTask={onUpdateTask}
+                                                    onEditTask={onEditTask}
                                                     allUsers={allUsers}
                                                     currentUser={currentUser}
                                                 />
