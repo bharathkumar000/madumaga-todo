@@ -204,7 +204,7 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
                                                                     'bg-[#F59E0B]'}`}
                                         style={{ zIndex: 10 - i }}
                                     >
-                                        {(u.name?.charAt(0) || 'B').toUpperCase()}
+                                        {u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}
                                     </div>
                                 ))}
                                 {assignees.length === 0 && (

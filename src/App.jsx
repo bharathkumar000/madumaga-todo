@@ -10,7 +10,6 @@ import ProfileModal from './components/ProfileModal';
 import LoginPage from './components/LoginPage';
 import EventsView from './components/EventsView';
 import AchievementsView from './components/AchievementsView';
-import TaskBankView from './components/TaskBankView';
 import { startOfDay, isBefore, isSameDay, endOfWeek, endOfMonth } from 'date-fns';
 import { X, Check } from 'lucide-react';
 
@@ -680,8 +679,6 @@ function App() {
                 <EventsView events={events} projects={projects} onAddEvent={() => setIsEventModalOpen(true)} onEventClick={handleEventClick} />
             ) : currentView === 'achievements' ? (
                 <AchievementsView projects={projects} events={events} currentUser={currentUser} />
-            ) : currentView === 'task-bank' ? (
-                <TaskBankView tasks={tasks} allUsers={allUsers} projects={projects} />
             ) : (
                 <DashboardShell
                     currentView={currentView}
