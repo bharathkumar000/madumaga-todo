@@ -260,12 +260,17 @@ function App() {
 
             const safeProjectId = (taskData.projectId && taskData.projectId !== '') ? taskData.projectId : null;
 
+            // Normalize assigned_to: DB expects a single UUID string, but frontend might send an array
+            const normalizedAssignee = Array.isArray(taskData.assignedTo)
+                ? (taskData.assignedTo.length > 0 ? taskData.assignedTo[0] : null)
+                : (taskData.assignedTo || null);
+
             const fullPayload = {
                 task_name: taskData.title,
                 project_id: safeProjectId,
                 user_id: user.id,
                 status: taskData.status || 'waiting',
-                assigned_to: taskData.assignedTo || null,
+                assigned_to: normalizedAssignee,
                 priority: taskData.priority,
                 date: taskData.date || null,
                 time: taskData.time || null,
@@ -629,7 +634,12 @@ function App() {
             const mappedUpdates = {};
             if (updates.title !== undefined) mappedUpdates.task_name = updates.title;
             if (updates.projectId !== undefined) mappedUpdates.project_id = updates.projectId;
-            if (updates.assignedTo !== undefined) mappedUpdates.assigned_to = updates.assignedTo;
+            if (updates.assignedTo !== undefined) {
+                // Normalize assigned_to: single UUID expected by DB
+                mappedUpdates.assigned_to = Array.isArray(updates.assignedTo)
+                    ? (updates.assignedTo.length > 0 ? updates.assignedTo[0] : null)
+                    : (updates.assignedTo || null);
+            }
             if (updates.rawDate !== undefined) mappedUpdates.raw_date = updates.rawDate;
             if (updates.status !== undefined) mappedUpdates.status = updates.status;
             if (updates.priority !== undefined) mappedUpdates.priority = updates.priority;
@@ -641,14 +651,8 @@ function App() {
             const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
 
             if (error) {
-                console.error("Update failed, attempting smart fallback:", error.message);
-                if (mappedUpdates.assigned_to && Array.isArray(mappedUpdates.assigned_to)) {
-                    mappedUpdates.assigned_to = mappedUpdates.assigned_to[0];
-                    const { error: retryError } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
-                    if (retryError) showToast("Sync failed: " + retryError.message);
-                } else {
-                    showToast("Sync failed: " + error.message);
-                }
+                console.error("Update sync error:", error.message);
+                showToast("Sync failed: " + error.message);
             }
         } catch (error) {
             console.error("Error updating task:", error);
