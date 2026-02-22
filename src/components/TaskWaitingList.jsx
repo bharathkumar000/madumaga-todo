@@ -137,28 +137,28 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
                         )}
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
                         <button
                             onClick={(e) => { e.stopPropagation(); onEditTask(task.id); }}
-                            className="p-1 rounded text-white/40 hover:text-amber-400 transition-colors"
+                            className="p-1.5 rounded-lg text-white/40 hover:text-amber-400 hover:bg-black bg-white/5 border border-white/5 transition-all"
                         >
                             <Pencil size={12} strokeWidth={2} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDuplicateTask(task.id); }}
-                            className="p-1 rounded text-white/40 hover:text-white transition-colors"
+                            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-black bg-white/5 border border-white/5 transition-all"
                         >
                             <Copy size={12} strokeWidth={2} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
-                            className={`p-1 rounded transition-colors ${task.completed ? 'text-green-400' : 'text-white/40 hover:text-green-400'}`}
+                            className={`p-1.5 rounded-lg transition-all bg-white/5 border border-white/5 ${task.completed ? 'text-green-400 bg-black/40' : 'text-white/40 hover:text-green-400 hover:bg-black'}`}
                         >
                             <Check size={12} strokeWidth={2} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
-                            className="p-1 rounded text-white/40 hover:text-rose-400 transition-colors"
+                            className="p-1.5 rounded-lg text-white/40 hover:text-rose-400 hover:bg-black bg-white/5 border border-white/5 transition-all"
                         >
                             <Trash2 size={12} strokeWidth={2} />
                         </button>

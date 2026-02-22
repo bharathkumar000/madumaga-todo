@@ -95,7 +95,10 @@ function App() {
 
             const { data: usersData, error: usersError } = await supabase.from('users').select('*');
             if (usersError) throw usersError;
-            if (usersData) setAllUsers(usersData);
+            if (usersData) setAllUsers(usersData.map(u => ({
+                ...u,
+                avatar: u.avatar_url || u.avatar // Support both naming variants for data consistency
+            })));
 
             const { data: filesData, error: filesError } = await supabase.from('project_files').select('*');
             if (filesError) throw filesError;
@@ -508,18 +511,28 @@ function App() {
         try {
             if (!currentUser) return;
 
-            // Construct a clean profile object with only the fields we want to persist in the 'users' table
+            // Construct a clean profile object with fallback naming
             const profileData = {
                 id: currentUser.id,
                 name: updatedUser.name,
                 color: updatedUser.color,
                 bio: updatedUser.bio,
-                avatar: updatedUser.avatar,
+                avatar_url: updatedUser.avatar, // Use standard avatar_url naming
                 last_seen: new Date().toISOString()
             };
 
             const { error } = await supabase.from('users').upsert(profileData);
-            if (error) throw error;
+
+            if (error) {
+                // If it fails because of column names, try one more time without avatar
+                console.warn("Retrying profile update without avatar field...");
+                const { avatar_url, ...retryData } = profileData;
+                const { error: retryError } = await supabase.from('users').upsert(retryData);
+                if (retryError) throw retryError;
+                showToast("Profile saved (avatar skipped)", "success");
+            } else {
+                showToast("Profile updated successfully", "success");
+            }
 
             // Note: Real-time listener in App.jsx will catch this and update allUsers, 
             // which will in turn update currentUserProfile.
