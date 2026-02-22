@@ -38,7 +38,7 @@ const dropAnimation = {
     }),
 };
 
-const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, onUpdateProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser, projectFiles, onUploadFile, onAddTextAsset, onDeleteFile }) => {
+const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, onUpdateProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser, projectFiles, onUploadFile, onAddTextAsset, onDeleteFile, selectedProjectId, setSelectedProjectId }) => {
     const [activeTask, setActiveTask] = useState(null);
     const [activeProject, setActiveProject] = useState(null);
 
@@ -84,14 +84,8 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
         };
     }, [isResizing]);
 
-    const [selectedProjectId, setSelectedProjectId] = useState(null);
+    // Selection handled by App.jsx props
 
-    // Reset project selection when view changes
-    useEffect(() => {
-        if (currentView !== 'projects') {
-            setSelectedProjectId(null);
-        }
-    }, [currentView]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -222,10 +216,14 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             const validContainers = ['waiting', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
 
             let targetStatus = overId;
+            if (String(overId).startsWith('waiting-')) {
+                targetStatus = 'waiting';
+            }
+
             const realOverId = getRealId(overId);
             const realActiveId = getRealId(active.id);
 
-            if (!validContainers.includes(overId)) {
+            if (!validContainers.includes(targetStatus)) {
                 const overTask = tasks.find(t => t.id === realOverId);
                 if (overTask) targetStatus = overTask.status;
             }
@@ -244,7 +242,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     updates.date = nextDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
                     updates.time = '11:00 AM';
                     updates.rawDate = nextDay.toISOString();
-                } else if (targetStatus === 'WAITING' || targetStatus === 'NO_DUE_DATE') {
+                } else if (targetStatus === 'waiting' || targetStatus === 'NO_DUE_DATE') {
                     updates.date = '';
                     updates.time = '';
                     updates.rawDate = '';
@@ -325,7 +323,10 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                 tasks={tasks}
                                 onBack={() => setSelectedProjectId(null)}
                                 onToggleTask={onToggleTask}
-                                onDeleteProject={onDeleteProject}
+                                onDeleteProject={(id) => {
+                                    onDeleteProject(id);
+                                    setSelectedProjectId(null);
+                                }}
                                 onUpdateProject={onUpdateProject}
                                 currentUser={currentUser}
                                 projectFiles={projectFiles}
@@ -339,7 +340,10 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                 tasks={tasks}
                                 onAddProject={onAddProject}
                                 onProjectClick={(id) => setSelectedProjectId(id)}
-                                onDeleteProject={onDeleteProject}
+                                onDeleteProject={(id) => {
+                                    onDeleteProject(id);
+                                    setSelectedProjectId(null);
+                                }}
                             />
                         )
                     ) : currentView === 'tasks' ? (

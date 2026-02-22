@@ -30,6 +30,7 @@ function App() {
     const [eventToEdit, setEventToEdit] = useState(null);
     const [editingTask, setEditingTask] = useState(null);
     const [selectedMemberId, setSelectedMemberId] = useState(null);
+    const [selectedProjectId, setSelectedProjectId] = useState(null);
     const [toast, setToast] = useState(null);
 
     const showToast = useCallback((message, type = 'error') => {
@@ -91,7 +92,8 @@ function App() {
                     buildingDescription: e.building_description,
                     projectId: e.project_id,
                     userId: e.user_id,
-                    teams: e.teams || []
+                    teams: e.teams || [],
+                    parentId: e.parent_id
                 })));
 
                 const { data: usersData, error: usersError } = await supabase.from('users').select('*');
@@ -127,7 +129,10 @@ function App() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
                 const mapProj = (p) => ({ ...p, name: p.title, id: p.id, userId: p.user_id });
                 if (payload.eventType === 'INSERT') {
-                    setProjects(prev => [...prev, mapProj(payload.new)]);
+                    setProjects(prev => {
+                        if (prev.find(p => p.id === payload.new.id)) return prev;
+                        return [...prev, mapProj(payload.new)];
+                    });
                 } else if (payload.eventType === 'UPDATE') {
                     const updated = mapProj(payload.new);
                     setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
@@ -138,7 +143,10 @@ function App() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
                 const mapEv = (e) => ({ ...e, toDate: e.to_date, buildingDescription: e.building_description, projectId: e.project_id, userId: e.user_id, teams: e.teams || [], parentId: e.parent_id });
                 if (payload.eventType === 'INSERT') {
-                    setEvents(prev => [...prev, mapEv(payload.new)]);
+                    setEvents(prev => {
+                        if (prev.find(e => e.id === payload.new.id)) return prev;
+                        return [...prev, mapEv(payload.new)];
+                    });
                 } else if (payload.eventType === 'UPDATE') {
                     const updated = mapEv(payload.new);
                     setEvents(prev => prev.map(e => e.id === updated.id ? updated : e));
@@ -191,7 +199,7 @@ function App() {
                     expectedStatus = 'THIS_MONTH';
                 }
 
-                const syncableStatuses = ['DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'WAITING', 'todo', 'NO_DUE_DATE', ''];
+                const syncableStatuses = ['DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'waiting', 'todo', 'NO_DUE_DATE', ''];
                 if (task.status !== expectedStatus && syncableStatuses.includes(task.status || '')) {
                     await supabase.from('tasks').update({ status: expectedStatus }).eq('id', task.id);
                 }
@@ -334,44 +342,92 @@ function App() {
 
     const handleAddEvent = async (newEvent) => {
         try {
+            const user = (await supabase.auth.getUser()).data.user;
+            if (!user) throw new Error("User not authenticated");
+
             const mappedEvent = {
                 title: newEvent.title,
                 date: newEvent.date,
                 to_date: newEvent.toDate || null,
                 location: newEvent.location || 'Online',
                 type: newEvent.type,
-                attendees: newEvent.attendees,
-                image: newEvent.image,
-                color: newEvent.color,
-                description: newEvent.description,
+                attendees: newEvent.attendees || 1,
+                image: newEvent.image || null,
+                color: newEvent.color || 'from-blue-500 to-indigo-600',
+                description: newEvent.description || '',
                 building_description: newEvent.buildingDescription || null,
                 project_id: newEvent.projectId || null,
-                won: newEvent.won,
-                links: newEvent.links || [],
-                teams: newEvent.teams || [],
-                parent_id: newEvent.parentId || null,
-                user_id: (await supabase.auth.getUser()).data.user?.id,
+                won: newEvent.won || false,
+                user_id: user.id,
                 completed: false
             };
 
-            if (eventToEdit) {
+            // Only add complex objects if they have data to avoid schema errors if columns missing
+            if (newEvent.parentId) mappedEvent.parent_id = newEvent.parentId;
+            if (newEvent.teams && newEvent.teams.length > 0) mappedEvent.teams = newEvent.teams;
+            if (newEvent.links && newEvent.links.length > 0) mappedEvent.links = newEvent.links;
+
+            if (eventToEdit && eventToEdit.id) {
+                // Optimistic Update for Edit
+                setEvents(prev => prev.map(e => e.id === eventToEdit.id ? { ...e, ...newEvent } : e));
+
                 const { error } = await supabase.from('events').update(mappedEvent).eq('id', eventToEdit.id);
                 if (error) throw error;
                 setEventToEdit(null);
             } else {
-                const { error } = await supabase.from('events').insert([mappedEvent]);
+                // Create a temporary ID for optimistic update
+                const tempId = 'temp-' + Date.now();
+                const optimisticEvent = {
+                    ...mappedEvent,
+                    id: tempId,
+                    toDate: mappedEvent.to_date,
+                    buildingDescription: mappedEvent.building_description,
+                    projectId: mappedEvent.project_id,
+                    userId: mappedEvent.user_id,
+                    parentId: mappedEvent.parent_id
+                };
+
+                // Optimistic Update for Insert
+                setEvents(prev => [...prev, optimisticEvent]);
+
+                const { data, error } = await supabase.from('events').insert([mappedEvent]).select();
                 if (error) throw error;
+
+                // Replace optimistic event with real one if needed, or let real-time handle it
+                if (data && data[0]) {
+                    const savedEvent = {
+                        ...data[0],
+                        toDate: data[0].to_date,
+                        buildingDescription: data[0].building_description,
+                        projectId: data[0].project_id,
+                        userId: data[0].user_id,
+                        parentId: data[0].parent_id
+                    };
+                    setEvents(prev => prev.map(e => e.id === tempId ? savedEvent : e));
+                }
             }
         } catch (error) {
             console.error("Error in handleAddEvent:", error);
+            showToast("Failed to save event: " + error.message);
+            // Roll back on error if it was a new event (edit rollback is more complex)
+            if (!eventToEdit) {
+                setEvents(prev => prev.filter(e => !String(e.id).startsWith('temp-')));
+            }
         }
     };
 
     const handleDeleteEvent = async (eventId) => {
         try {
-            const { error } = await supabase.from('events').delete().eq('id', eventId);
-            if (error) throw error;
+            // Optimistic Update
+            setEvents(prev => prev.filter(e => e.id !== eventId));
             setSelectedEvent(null);
+
+            const { error } = await supabase.from('events').delete().eq('id', eventId);
+            if (error) {
+                // Rollback if needed (complex because we need the deleted event back)
+                showToast("Failed to delete event: " + error.message);
+                // For now, at least notify the user
+            }
         } catch (error) {
             console.error("Error deleting event:", error);
         }
@@ -384,12 +440,14 @@ function App() {
             if (updates.buildingDescription) mappedUpdates.building_description = updates.buildingDescription;
             if (updates.projectId) mappedUpdates.project_id = updates.projectId;
             if (updates.userId) mappedUpdates.user_id = updates.userId;
+            if (updates.parentId) mappedUpdates.parent_id = updates.parentId;
 
             // Cleanup camelCase
             delete mappedUpdates.toDate;
             delete mappedUpdates.buildingDescription;
             delete mappedUpdates.projectId;
             delete mappedUpdates.userId;
+            delete mappedUpdates.parentId;
 
             const { error } = await supabase.from('events').update(mappedUpdates).eq('id', eventId);
             if (error) throw error;
@@ -404,11 +462,20 @@ function App() {
         try {
             const event = events.find(e => e.id === eventId);
             if (!event) return;
-            const { error } = await supabase.from('events').update({ completed: !event.completed }).eq('id', eventId);
+
+            const newCompleted = !event.completed;
+
+            // Optimistic Update
+            setEvents(prev => prev.map(e => e.id === eventId ? { ...e, completed: newCompleted } : e));
+            if (selectedEvent?.id === eventId) {
+                setSelectedEvent(prev => ({ ...prev, completed: newCompleted }));
+            }
+
+            const { error } = await supabase.from('events').update({ completed: newCompleted }).eq('id', eventId);
             if (error) throw error;
-            if (selectedEvent?.id === eventId) setSelectedEvent(prev => ({ ...prev, completed: !prev.completed }));
         } catch (error) {
             console.error("Error toggling event:", error);
+            showToast("Failed to update event status");
         }
     };
 
@@ -676,7 +743,26 @@ function App() {
             }}
         >
             {currentView === 'events' ? (
-                <EventsView events={events} projects={projects} onAddEvent={() => setIsEventModalOpen(true)} onEventClick={handleEventClick} />
+                <EventsView
+                    events={events}
+                    projects={projects}
+                    users={allUsers}
+                    onAddEvent={() => setIsEventModalOpen(true)}
+                    onEventClick={handleEventClick}
+                    onEdit={handleEditEvent}
+                    onDelete={handleDeleteEvent}
+                    onToggleComplete={handleToggleEventComplete}
+                    onUpdateEvent={handleUpdateEvent}
+                    onAddSubEvent={(parentId) => {
+                        setEventToEdit({ parentId });
+                        setIsEventModalOpen(true);
+                    }}
+                    showToast={showToast}
+                    onGoToProject={(id) => {
+                        setSelectedProjectId(id);
+                        setCurrentView('projects');
+                    }}
+                />
             ) : currentView === 'achievements' ? (
                 <AchievementsView projects={projects} events={events} currentUser={currentUser} />
             ) : (
@@ -704,6 +790,8 @@ function App() {
                     onUploadFile={handleUploadFile}
                     onAddTextAsset={handleAddTextAsset}
                     onDeleteFile={handleDeleteFile}
+                    selectedProjectId={selectedProjectId}
+                    setSelectedProjectId={setSelectedProjectId}
                 />
             )}
             <AddTaskModal
@@ -734,6 +822,11 @@ function App() {
                     setIsEventModalOpen(true);
                 }}
                 showToast={showToast}
+                onGoToProject={(id) => {
+                    setSelectedProjectId(id);
+                    setCurrentView('projects');
+                    setSelectedEvent(null);
+                }}
             />
             <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} currentUser={currentUserProfile} onUpdateProfile={handleUpdateProfile} users={allUsers} />
 
