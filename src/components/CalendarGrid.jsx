@@ -115,7 +115,7 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
         transform: CSS.Translate.toString(transform),
         top: `${tempStartHour * hourHeight}px`,
         height: `${(tempDuration / 60) * hourHeight - 4}px`,
-        left: `${6 + offset}%`,
+        left: `${3 + offset}%`,
         width: `${width}%`,
         zIndex: isDragging ? 50 : isResizing ? 45 : 10 + Math.floor(offset),
         backgroundImage: !task.completed ? `
@@ -187,95 +187,141 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
 
             <div
                 {...listeners}
-                className="relative z-10 flex flex-col h-full p-1.5 cursor-grab active:cursor-grabbing"
+                className={`relative z-10 flex h-full p-1.5 cursor-grab active:cursor-grabbing ${tempDuration === 60 ? 'flex-row items-center justify-between' : 'flex-col'}`}
             >
-                <div className="flex justify-between items-start gap-2 h-full">
-                    <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
-                        <div>
-                            <div className="flex -space-x-1.5 mb-1 items-center">
-                                {assignees.slice(0, 2).map((u, i) => (
-                                    <div key={u.id} className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-[7px] font-black uppercase border border-[#16191D] shadow-sm
-                                        ${u.color === 'blue' ? 'bg-[#3B82F6]' :
-                                            u.color === 'green' ? 'bg-[#10B981]' :
-                                                u.color === 'rose' ? 'bg-[#F43F5E]' :
-                                                    u.color === 'pink' ? 'bg-[#EC4899]' :
-                                                        u.color === 'teal' ? 'bg-[#14B8A6]' :
-                                                            u.color === 'orange' ? 'bg-[#F97316]' :
-                                                                u.color === 'purple' ? 'bg-[#A855F7]' :
-                                                                    'bg-[#F59E0B]'}`}
-                                        style={{ zIndex: 10 - i }}
+                {tempDuration === 60 ? (
+                    // SPECIAL 1-HOUR HORIZONTAL LAYOUT
+                    <>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {/* Avatar */}
+                            <div className="shrink-0">
+                                {assignees.length > 0 ? (
+                                    <div
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[12px] font-black uppercase border border-[#16191D] shadow-md
+                                            ${assignees[0].color === 'blue' ? 'bg-[#3B82F6] border-blue-400/20' :
+                                                assignees[0].color === 'green' ? 'bg-[#10B981] border-emerald-400/20' :
+                                                    assignees[0].color === 'rose' ? 'bg-[#F43F5E] border-rose-400/20' :
+                                                        assignees[0].color === 'pink' ? 'bg-[#EC4899] border-pink-400/20' :
+                                                            'bg-[#F59E0B] border-amber-400/20'}`}
                                     >
-                                        {u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}
+                                        {(assignees[0].name?.charAt(0) || 'B').toUpperCase()}
                                     </div>
-                                ))}
-                                {assignees.length === 0 && (
-                                    <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[7px] font-black uppercase border border-[#16191D]">
+                                ) : (
+                                    <div className="w-7 h-7 rounded-full bg-blue-500 border border-blue-400/20 flex items-center justify-center text-white text-[12px] font-black uppercase shadow-md">
                                         {(task.creatorInitial || 'B').toUpperCase()}
                                     </div>
                                 )}
                             </div>
-                            <div className={`font-black tracking-tight leading-tight uppercase text-[12px] line-clamp-2 ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                            {/* Title */}
+                            <h3 className={`font-black text-xl tracking-tight uppercase truncate ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                 {task.title}
-                            </div>
-                            <div className="mt-1.5 flex flex-col gap-0.5">
-                                <div className="text-[7px] font-black text-white/90 uppercase tracking-widest leading-none">
-                                    {task.time} — {(() => {
-                                        const match = task.time?.match(/(\d+):(\d+)\s?(AM|PM)/i);
-                                        if (!match) return '';
-                                        let h = parseInt(match[1]);
-                                        const m = parseInt(match[2]);
-                                        const ampm = match[3].toUpperCase();
-                                        if (ampm === 'PM' && h < 12) h += 12;
-                                        if (ampm === 'AM' && h === 12) h = 0;
-                                        const d = new Date();
-                                        d.setHours(h, m + tempDuration);
-                                        return format(d, 'h:mm a');
-                                    })()}
-                                </div>
-                                <div className="text-[7px] font-black text-white/40 uppercase tracking-widest leading-none">
-                                    {tempDuration >= 60 ? `${Math.floor(tempDuration / 60)}h ${tempDuration % 60}m` : `${tempDuration}m`}
-                                </div>
-                                {(task.projectName || (task.tag && task.tag !== 'NEW')) && (
-                                    <div className="mt-1 text-[7px] font-black text-white/30 uppercase tracking-[0.15em] border border-white/5 px-1.5 py-0.5 rounded bg-white/5 line-clamp-2 max-w-[100px]">
-                                        {task.projectName || task.tag}
-                                    </div>
-                                )}
-                            </div>
+                            </h3>
                         </div>
-                    </div>
 
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0 pointer-events-auto">
-                        {task.priority && (
-                            <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${task.priority === 'High' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
-                                task.priority === 'Mid' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                }`}>
-                                {task.priority}
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 scale-90 translate-x-1 group-hover:scale-100 group-hover:translate-x-0 transition-all duration-300">
+                        {/* Ultra-Small Action Buttons */}
+                        <div className="flex items-center gap-1 shrink-0 pointer-events-auto">
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleTask(task.id);
-                                }}
-                                className={`p-1 rounded-md transition-all active:scale-95 border ${task.completed ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-white/5 border-white/5 text-emerald-400/50 hover:text-emerald-400 hover:bg-black'}`}
+                                onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
+                                className={`w-8 h-8 rounded-md flex items-center justify-center transition-all active:scale-90 border ${task.completed ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-emerald-400/40 hover:text-emerald-400 hover:bg-black'}`}
                             >
-                                <Check size={10} strokeWidth={3} />
+                                <Check size={16} strokeWidth={3} />
                             </button>
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteTask(task.id);
-                                }}
-                                className="p-1 rounded-md bg-white/5 border border-white/5 text-rose-400/50 hover:text-rose-400 hover:bg-black transition-all active:scale-95"
+                                onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                                className="w-8 h-8 rounded-md bg-white/5 border border-white/10 text-rose-400/40 hover:text-rose-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
                             >
-                                <Trash2 size={10} strokeWidth={3} />
+                                <Trash2 size={16} strokeWidth={3} />
                             </button>
                         </div>
+                    </>
+                ) : (
+                    // STANDARD VERTICAL LAYOUT (For other durations)
+                    <div className="flex flex-col gap-2 h-full">
+                        {/* Row 1: Avatar + Title | Action Buttons */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="flex -space-x-1.5 shrink-0">
+                                    {assignees.slice(0, 2).map((u, i) => (
+                                        <div key={u.id} className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-black uppercase border-2 border-[#16191D] shadow-md
+                                            ${u.color === 'blue' ? 'bg-[#3B82F6]' :
+                                                u.color === 'green' ? 'bg-[#10B981]' :
+                                                    u.color === 'rose' ? 'bg-[#F43F5E]' :
+                                                        u.color === 'pink' ? 'bg-[#EC4899]' :
+                                                            u.color === 'teal' ? 'bg-[#14B8A6]' :
+                                                                u.color === 'orange' ? 'bg-[#F97316]' :
+                                                                    u.color === 'purple' ? 'bg-[#A855F7]' :
+                                                                        'bg-[#F59E0B]'}`}
+                                            style={{ zIndex: 10 - i }}
+                                        >
+                                            {u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}
+                                        </div>
+                                    ))}
+                                    {assignees.length === 0 && (
+                                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-[12px] font-black uppercase border-2 border-[#16191D] shadow-md">
+                                            {(task.creatorInitial || 'B').toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
+                                <h3 className={`font-black tracking-tighter uppercase text-2xl truncate ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                                    {task.title}
+                                </h3>
+                            </div>
+                            {/* Always-visible Action Buttons */}
+                            <div className="flex items-center gap-1 shrink-0 pointer-events-auto">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 border ${task.completed ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-emerald-400/40 hover:text-emerald-400 hover:bg-black'}`}
+                                >
+                                    <Check size={16} strokeWidth={3} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-rose-400/40 hover:text-rose-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
+                                >
+                                    <Trash2 size={16} strokeWidth={3} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Time Range */}
+                        <div className="text-base font-black text-white/90 uppercase tracking-tight leading-none whitespace-nowrap mt-3">
+                            {task.time} — {(() => {
+                                const match = task.time?.match(/(\d+):(\d+)\s?(AM|PM)/i);
+                                if (!match) return '';
+                                let h = parseInt(match[1]);
+                                const m = parseInt(match[2]);
+                                const ampm = match[3].toUpperCase();
+                                if (ampm === 'PM' && h < 12) h += 12;
+                                if (ampm === 'AM' && h === 12) h = 0;
+                                const d = new Date();
+                                d.setHours(h, m + tempDuration);
+                                return format(d, 'h:mm a');
+                            })()}
+                        </div>
+
+                        {/* Row 3: Duration */}
+                        <div className="text-xs font-black text-white/40 uppercase tracking-widest leading-none">
+                            {tempDuration >= 60 ? `${Math.floor(tempDuration / 60)}h ${tempDuration % 60}m` : `${tempDuration}m`}
+                        </div>
+
+                        {/* Row 4: Priority + Project */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {task.priority && (
+                                <div className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${task.priority === 'High' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
+                                    task.priority === 'Mid' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                        'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    }`}>
+                                    {task.priority}
+                                </div>
+                            )}
+                            {(task.projectName || (task.tag && task.tag !== 'NEW')) && (
+                                <div className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em] border border-white/5 px-2 py-1 rounded-lg bg-white/5 truncate max-w-[120px]">
+                                    {task.projectName || task.tag}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div >
     );
@@ -396,7 +442,8 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                                 'HACKATHON': 'from-pink-500 to-rose-500 text-pink-500',
                                 'WORKSHOP': 'from-purple-500 to-pink-600 text-purple-500',
                                 'MEETUP': 'from-blue-400 to-cyan-500 text-blue-400',
-                                'CONFERENCE': 'from-amber-400 to-orange-500 text-amber-500'
+                                'CONFERENCE': 'from-amber-400 to-orange-500 text-amber-500',
+                                'COLLECTION': 'from-indigo-500 to-purple-600 text-indigo-400'
                             };
                             return colors[t] || 'from-pink-500 to-blue-500 text-pink-400';
                         };
@@ -513,10 +560,10 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                                             const colIndex = columns.findIndex(col => col.some(t => t.id === task.id));
                                             const totalCols = columns.length;
 
-                                            // Layout: Start at 6% (to avoid time column overlap), then offset
-                                            // width: 85% to stay "big" and overlap slightly
+                                            // Layout: Start at 3% (to avoid time column overlap), then offset
+                                            // width: 94% to take almost full column
                                             const offset = colIndex * 20;
-                                            const width = 85;
+                                            const width = 94;
 
                                             return (
                                                 <DraggableCalendarTask
