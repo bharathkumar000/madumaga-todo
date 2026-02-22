@@ -3,6 +3,7 @@ import React from 'react';
 import { Folder, MoreHorizontal, Trash2, Plus } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import ConfirmationModal from './ConfirmationModal';
 
 const ProjectCard = ({ project, onClick, onDelete, taskCount }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -48,17 +49,28 @@ const ProjectCard = ({ project, onClick, onDelete, taskCount }) => {
                 </h3>
             </div>
 
-            <div className="flex-1 relative z-10">
+            <div className="flex-1 relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase tracking-widest bg-white/5 w-fit px-3 py-1 rounded-full border border-white/5 group-hover:border-[#4F46E5]/10 group-hover:bg-[#4F46E5]/5">
                     <span className="text-[#4F46E5]">{taskCount}</span>
                     <span>Active Tasks</span>
                 </div>
+
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(project.id);
+                    }}
+                    className="p-2 rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
+                >
+                    <Trash2 size={16} />
+                </button>
             </div>
         </div>
     );
 };
 
 const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject, tasks = [] }) => {
+    const [projectToDelete, setProjectToDelete] = React.useState(null);
 
     return (
         <div className="flex flex-col h-full bg-[#0B0D10] text-white p-6">
@@ -84,12 +96,24 @@ const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject,
                                 project={project}
                                 taskCount={taskCount}
                                 onClick={onProjectClick}
-                                onDelete={onDeleteProject}
+                                onDelete={(id) => setProjectToDelete(id)}
                             />
                         );
                     })}
                 </SortableContext>
             </div>
+
+            <ConfirmationModal
+                isOpen={!!projectToDelete}
+                title="Delete Project?"
+                message="Are you sure you want to delete this project? This action cannot be undone."
+                onConfirm={() => {
+                    onDeleteProject(projectToDelete);
+                    setProjectToDelete(null);
+                }}
+                onCancel={() => setProjectToDelete(null)}
+                confirmText="Delete Project"
+            />
         </div>
     );
 };

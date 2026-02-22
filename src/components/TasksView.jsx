@@ -19,10 +19,11 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
         const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
         const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
 
+        const nonMeAssignees = assignees.filter(u => u.id !== currentUser?.id);
         const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
         const myProfile = allUsers.find(u => u.id === currentUser?.id);
 
-        const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === task.userId));
+        const activeAssignee = nonMeAssignees.length > 0 ? nonMeAssignees[0] : (isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === task.userId)));
         const c = activeAssignee?.color || 'blue';
 
         const rgba = c === 'blue' ? 'rgba(59, 130, 246, 0.4)' :

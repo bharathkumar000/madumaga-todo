@@ -400,9 +400,11 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                 backgroundImage: (() => {
                                     const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
                                     const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
-                                    const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+                                    const nonMeAssignees = assignees.filter(u => u.id !== currentUser?.id);
                                     const myProfile = allUsers.find(u => u.id === currentUser?.id);
-                                    const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === activeTask.userId));
+                                    const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+
+                                    const activeAssignee = nonMeAssignees.length > 0 ? nonMeAssignees[0] : (isMeAssigned ? myProfile : allUsers.find(u => u.id === activeTask.userId));
                                     const c = activeAssignee?.color || 'blue';
 
                                     const taskColor = c === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
@@ -424,9 +426,11 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                             {(() => {
                                 const ids = Array.isArray(activeTask.assignedTo) ? activeTask.assignedTo : (activeTask.assignedTo ? [activeTask.assignedTo] : []);
                                 const assignees = ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
-                                const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+                                const nonMeAssignees = assignees.filter(u => u.id !== currentUser?.id);
                                 const myProfile = allUsers.find(u => u.id === currentUser?.id);
-                                const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === activeTask.userId));
+                                const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
+
+                                const activeAssignee = nonMeAssignees.length > 0 ? nonMeAssignees[0] : (isMeAssigned ? myProfile : allUsers.find(u => u.id === activeTask.userId));
                                 const c = activeAssignee?.color || 'blue';
                                 const glowColor = c === 'blue' ? '#3B82F6' : c === 'green' ? '#10B981' : (c === 'amber' || c === 'yellow') ? '#F59E0B' : c === 'rose' ? '#F43F5E' : c === 'pink' ? '#EC4899' : c === 'teal' ? '#14B8A6' : c === 'orange' ? '#F97316' : c === 'purple' ? '#A855F7' : '#8AB4F8';
                                 return (

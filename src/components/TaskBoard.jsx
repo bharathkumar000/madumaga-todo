@@ -19,10 +19,11 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
         return ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
     }, [task.assignedTo, allUsers]);
 
+    const nonMeAssignees = assignees.filter(u => u.id !== currentUser?.id);
     const isMeAssigned = assignees.some(u => u.id === currentUser?.id);
     const myProfile = allUsers.find(u => u.id === currentUser?.id);
 
-    const activeAssignee = isMeAssigned ? myProfile : (assignees[0] || allUsers.find(u => u.id === task.userId));
+    const activeAssignee = nonMeAssignees.length > 0 ? nonMeAssignees[0] : (isMeAssigned ? myProfile : allUsers.find(u => u.id === task.userId));
     const assigneeColor = activeAssignee?.color || 'blue';
 
     const taskColor = assigneeColor === 'blue' ? 'rgba(59, 130, 246, 0.4)' :
@@ -121,9 +122,9 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
             <div className="relative z-10 px-3 py-2">
                 <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
-                        <div className="flex items-start gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 mb-1.5">
                             {/* Assignee Avatars - Left of Title */}
-                            <div className="flex -space-x-2 flex-shrink-0 mt-0.5">
+                            <div className="flex -space-x-2 flex-shrink-0">
                                 {assignees.slice(0, 3).map((u, i) => (
                                     <div
                                         key={u.id}
@@ -133,7 +134,13 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                                             zIndex: 10 - i
                                         }}
                                     >
-                                        <span className="relative z-10">{u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()}</span>
+                                        <span className="relative z-10">
+                                            {u.avatar && (u.avatar.startsWith('http') || u.avatar.startsWith('https')) ? (
+                                                <img src={u.avatar} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                u.avatar || (u.name?.charAt(0) || 'B').toUpperCase()
+                                            )}
+                                        </span>
                                     </div>
                                 ))}
                                 {assignees.length === 0 && (
@@ -170,7 +177,7 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         {/* Priority & Project Badge area */}
                         <div className="flex flex-col items-end gap-1">
-                            {task.priority && (
+                            {task.priority && task.duration !== 60 && (
                                 <div className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-wider border bg-black/40 backdrop-blur-md 
                                     ${task.priority === 'High' ? 'text-cyan-400 border-cyan-500/20' :
                                         task.priority === 'Mid' ? 'text-amber-400 border-amber-500/20' :
@@ -188,27 +195,15 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
                         </div>
 
 
-                        <div className="grid grid-cols-2 gap-1.5 opacity-0 group-hover:opacity-100 transition-all scale-90 translate-x-1 group-hover:translate-x-0 duration-300">
+                        <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all scale-90 translate-x-1 group-hover:translate-x-0 duration-300">
                             <button
-                                onClick={(e) => { e.stopPropagation(); onEditTask && onEditTask(task.id); }}
-                                className="p-1.5 rounded-md bg-white/5 border border-white/5 text-amber-400/50 hover:text-amber-400 hover:bg-black transition-all active:scale-95"
-                            >
-                                <Pencil size={13} strokeWidth={3} />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDuplicateTask && onDuplicateTask(task.id); }}
-                                className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-indigo-400/50 hover:text-indigo-400 hover:bg-black transition-all active:scale-95"
-                            >
-                                <Copy size={13} strokeWidth={3} />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
+                                onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
                                 className={`p-1.5 rounded-lg transition-all active:scale-95 border ${task.completed ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-white/5 border-white/5 text-emerald-400/50 hover:text-emerald-400 hover:bg-black'}`}
                             >
                                 <Check size={13} strokeWidth={3} />
                             </button>
                             <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                                onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
                                 className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-rose-400/50 hover:text-rose-400 hover:bg-black transition-all active:scale-95"
                             >
                                 <Trash2 size={13} strokeWidth={3} />
