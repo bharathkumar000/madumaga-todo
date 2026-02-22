@@ -1,6 +1,6 @@
 import { X, Calendar, MapPin, Info, Bell, ArrowRight, Pencil, Folder, Link as LinkIcon, Compass, Sparkles, Box, Check, Trash2, Trophy, Users, Plus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
-import ConfirmationModal from './ConfirmationModal';
+import ConfirmationModal from './ConfirmationModal.jsx';
 
 const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, onUpdateEvent, projects = [], users = [], allEvents = [], onAddSubEvent, showToast, onGoToProject }) => {
     if (!event) return null;

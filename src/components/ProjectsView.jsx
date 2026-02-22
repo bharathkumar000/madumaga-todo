@@ -3,7 +3,7 @@ import React from 'react';
 import { Folder, MoreHorizontal, Trash2, Plus } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import ConfirmationModal from './ConfirmationModal';
+import ConfirmationModal from './ConfirmationModal.jsx';
 
 const ProjectCard = ({ project, onClick, onDelete, taskCount }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({

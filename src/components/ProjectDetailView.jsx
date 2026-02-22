@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { ChevronLeft, Target, CheckCircle2, PlayCircle, Trash2, FileText, Upload, X, Clock, Edit2, Check } from 'lucide-react';
-import ConfirmationModal from './ConfirmationModal';
+import ConfirmationModal from './ConfirmationModal.jsx';
 
 const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProject, onUpdateProject, projectFiles = [], onUploadFile, onAddTextAsset, onDeleteFile, currentUser }) => {
     const [activeTab, setActiveTab] = useState('planning');

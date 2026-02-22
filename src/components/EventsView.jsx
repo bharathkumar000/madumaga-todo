@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, ExternalLink, Plus, ChevronLeft, Box, Sparkles, Link as LinkIcon, Compass, Pencil, X, Check, Trash2, Folder } from 'lucide-react';
-import ConfirmationModal from './ConfirmationModal';
+import ConfirmationModal from './ConfirmationModal.jsx';
 
 const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], users = [], onEdit, onDelete, onToggleComplete, onUpdateEvent, onAddSubEvent, showToast, onGoToProject }) => {
     const [activeCollectionId, setActiveCollectionId] = useState(null);
