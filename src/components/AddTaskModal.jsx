@@ -51,6 +51,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                 initialAssignees = [taskToEdit.userId];
             }
             setSelectedAssigneeIds(initialAssignees);
+            setSelectedProjectId(taskToEdit.projectId || '');
         } else if (initialValues) {
             // Handle defaults from quick add (e.g. Waiting List)
             setTitle(initialValues.title || '');
@@ -160,7 +161,8 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
             priority,
             description,
             date: selectedDate ? selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
-            rawDate: selectedDate ? selectedDate.toISOString() : ''
+            rawDate: selectedDate ? selectedDate.toISOString() : '',
+            time: taskToEdit?.time || initialValues?.time || ''
         });
         setTitle('');
         setType('Task');
@@ -209,7 +211,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                     {/* Header */}
                     <div className="flex justify-between items-center p-4 border-b border-white/5">
                         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">
-                            Create New Task
+                            {taskToEdit ? 'Edit Task' : 'Create New Task'}
                         </div>
                         <button onClick={onClose} className="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all active:scale-90">
                             <X size={18} />
@@ -456,7 +458,7 @@ const AddTaskModal = ({ isOpen, onClose, onSave, users = [], currentUser, projec
                                                 'bg-[#F59E0B] shadow-amber-500/20 hover:bg-[#D97706]'}
                                 `}
                         >
-                            Sync Task
+                            {taskToEdit ? 'Update Task' : 'Sync Task'}
                         </button>
                     </div>
                 </div>

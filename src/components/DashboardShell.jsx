@@ -372,6 +372,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                             onToggleTask={onToggleTask}
                             onDeleteTask={onDeleteTask}
                             onUpdateTask={onUpdateTask}
+                            onEditTask={onEditTask}
                             selectedMemberId={selectedMemberId}
                             onClearMemberFilter={onClearMemberFilter}
                             allUsers={allUsers}

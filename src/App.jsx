@@ -427,17 +427,17 @@ function App() {
             setEvents(prev => prev.filter(e => e.id !== eventId && !childIds.includes(e.id)));
             setSelectedEvent(null);
 
-            // 1. Delete the parent event
-            const { error: parentError } = await supabase.from('events').delete().eq('id', eventId);
-            if (parentError) throw parentError;
-
-            // 2. Delete all sub-events if they exist
+            // 1. Delete all sub-events first if they exist (to satisfy FK constraints)
             if (childIds.length > 0) {
                 const { error: childrenError } = await supabase.from('events').delete().in('id', childIds);
                 if (childrenError) {
                     console.error("Failed to delete sub-events:", childrenError.message);
                 }
             }
+
+            // 2. Delete the parent event
+            const { error: parentError } = await supabase.from('events').delete().eq('id', eventId);
+            if (parentError) throw parentError;
 
             showToast("Event purged successfully", "success");
         } catch (error) {
