@@ -159,10 +159,11 @@ function App() {
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+                const mapUser = (u) => ({ ...u, avatar: u.avatar_url || u.avatar });
                 if (payload.eventType === 'INSERT') {
-                    setAllUsers(prev => [...prev, payload.new]);
+                    setAllUsers(prev => [...prev, mapUser(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setAllUsers(prev => prev.map(u => u.id === payload.new.id ? payload.new : u));
+                    setAllUsers(prev => prev.map(u => u.id === payload.new.id ? mapUser(payload.new) : u));
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'project_files' }, (payload) => {
@@ -434,7 +435,8 @@ function App() {
             if (childIds.length > 0) {
                 const { error: childrenError } = await supabase.from('events').delete().in('id', childIds);
                 if (childrenError) {
-                    console.error("Failed to delete sub-events:", childrenError.message);
+                    console.error("Failed to delete sub-events:", childrenError);
+                    throw new Error(`Sub-event cleanup failed: ${childrenError.message}`);
                 }
             }
 
@@ -511,25 +513,32 @@ function App() {
         try {
             if (!currentUser) return;
 
-            // Construct a clean profile object with fallback naming
+            // Construct a clean profile object with wide compatibility
             const profileData = {
                 id: currentUser.id,
                 name: updatedUser.name,
+                full_name: updatedUser.name, // Try both naming variants for compatibility
                 color: updatedUser.color,
                 bio: updatedUser.bio,
-                avatar_url: updatedUser.avatar, // Use standard avatar_url naming
+                avatar_url: updatedUser.avatar,
                 last_seen: new Date().toISOString()
             };
 
-            const { error } = await supabase.from('users').upsert(profileData);
+            const { error: upsertError } = await supabase.from('users').upsert(profileData);
 
-            if (error) {
-                // If it fails because of column names, try one more time without avatar
-                console.warn("Retrying profile update without avatar field...");
-                const { avatar_url, ...retryData } = profileData;
-                const { error: retryError } = await supabase.from('users').upsert(retryData);
+            if (upsertError) {
+                console.warn("Primary upsert failed, retrying with minimal payload...", upsertError);
+                // Try minimal payload without avatar/last_seen to isolate the issue
+                const minimalData = {
+                    id: currentUser.id,
+                    name: updatedUser.name,
+                    full_name: updatedUser.name,
+                    color: updatedUser.color,
+                    bio: updatedUser.bio
+                };
+                const { error: retryError } = await supabase.from('users').upsert(minimalData);
                 if (retryError) throw retryError;
-                showToast("Profile saved (avatar skipped)", "success");
+                showToast("Profile saved (partial sync)", "success");
             } else {
                 showToast("Profile updated successfully", "success");
             }
