@@ -14,15 +14,12 @@ body {
 }
 
 /* Optimize performance during Drag and Drop */
-.is-dragging * {
-  pointer-events: none !important;
+.is-dragging {
   user-select: none !important;
-  cursor: grabbing !important;
 }
 
-.is-dragging .drag-handle,
-.is-dragging [data-dnd-active="true"] * {
-  pointer-events: auto !important;
+.is-dragging * {
+  cursor: grabbing !important;
 }
 
 /* Custom Scrollbar */

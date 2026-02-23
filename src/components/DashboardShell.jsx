@@ -15,6 +15,8 @@ const MemoizedTaskWaitingList = React.memo(TaskWaitingList);
 import {
     DndContext,
     DragOverlay,
+    MouseSensor,
+    TouchSensor,
     PointerSensor,
     KeyboardSensor,
     useSensor,
@@ -107,9 +109,15 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
 
     const sensors = useSensors(
-        useSensor(PointerSensor, {
+        useSensor(MouseSensor, {
             activationConstraint: {
-                distance: 8, // Slightly higher to prevent accidental drags
+                distance: 5,
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 250,
+                tolerance: 5,
             },
         }),
         useSensor(KeyboardSensor, {
@@ -154,25 +162,56 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
             setProjects((items) => {
                 const oldIndex = items.findIndex((i) => String(i.id) === String(realActiveId));
                 const newIndex = items.findIndex((i) => String(i.id) === String(realOverId));
-                return arrayMove(items, oldIndex, newIndex);
+                if (oldIndex !== -1 && newIndex !== -1) {
+                    return arrayMove(items, oldIndex, newIndex);
+                }
+                return items;
             });
             return;
         }
 
         if (!isActiveTask) return;
 
-        // Moving Task over Task (reorder only, no Firestore write needed for order)
+        // Task Reordering / Status Change while dragging (for visual feedback)
         if (isActiveTask && isOverTask) {
-            // Only block if both are calendar tasks (no reordering in calendar)
-            if (currentView === 'calendar' && String(overId).startsWith('calendar-')) return;
-            // We no longer setTasks here. Status changes happen in handleDragEnd.
+            // Only reorder if not in calendar view tasks
+            if (currentView === 'calendar' && (String(activeId).startsWith('calendar-') || String(overId).startsWith('calendar-'))) return;
+
+            setTasks((prev) => {
+                const oldIndex = prev.findIndex((t) => String(t.id) === String(realActiveId));
+                const newIndex = prev.findIndex((t) => String(t.id) === String(realOverId));
+
+                if (oldIndex !== -1 && newIndex !== -1) {
+                    const activeTask = prev[oldIndex];
+                    const overTask = prev[newIndex];
+
+                    if (activeTask.status !== overTask.status) {
+                        const newTasks = [...prev];
+                        newTasks[oldIndex] = { ...activeTask, status: overTask.status };
+                        return arrayMove(newTasks, oldIndex, newIndex);
+                    }
+
+                    return arrayMove(prev, oldIndex, newIndex);
+                }
+                return prev;
+            });
         }
 
-        // Moving Task over Column
+        // Dropping Task over a Column (empty area)
         if (!isOverTask && overId) {
             const validContainers = ['waiting', 'DELAYED', 'TODAY', 'THIS_WEEK', 'THIS_MONTH', 'UPCOMING', 'NO_DUE_DATE'];
             if (validContainers.includes(overId) || String(overId).startsWith('waiting-')) {
-                // No local state mutation needed for preview, but we can log or trigger visual changes
+                const targetStatus = overId.toString().startsWith('waiting') ? 'waiting' : overId;
+
+                setTasks((prev) => {
+                    const activeIndex = prev.findIndex((t) => String(t.id) === String(realActiveId));
+                    if (activeIndex !== -1 && prev[activeIndex].status !== targetStatus) {
+                        const newTasks = [...prev];
+                        newTasks[activeIndex] = { ...prev[activeIndex], status: targetStatus };
+                        return newTasks;
+                    }
+                    return prev;
+                });
             }
         }
     };
