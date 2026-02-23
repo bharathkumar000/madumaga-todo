@@ -661,11 +661,36 @@ function App() {
 
     const handleDeleteProject = async (projectId) => {
         try {
+            // Optimistic update
+            setProjects(prev => prev.filter(p => p.id !== projectId));
+            if (selectedProjectId === projectId) setSelectedProjectId(null);
+
+            // 1. Handle associated tasks - set project_id to null instead of deleting
+            const { error: tasksError } = await supabase.from('tasks').update({ project_id: null }).eq('project_id', projectId);
+            if (tasksError) console.warn("Failed to detach tasks:", tasksError.message);
+
+            // 2. Handle associated events - set project_id to null
+            const { error: eventsError } = await supabase.from('events').update({ project_id: null }).eq('project_id', projectId);
+            if (eventsError) console.warn("Failed to detach events:", eventsError.message);
+
+            // 3. Handle associated files - delete them as they are specifically project assets
+            const { error: filesError } = await supabase.from('project_files').delete().eq('project_id', projectId);
+            if (filesError) console.warn("Failed to delete project files:", filesError.message);
+
+            // 4. Finally delete the project
             const { error } = await supabase.from('projects').delete().eq('id', projectId);
-            if (error) throw error;
+
+            if (error) {
+                // Rollback optimistic update
+                handleRefresh();
+                throw error;
+            }
+
+            showToast("Project purged successfully", "success");
             setCurrentView('projects');
         } catch (error) {
             console.error("Error deleting project:", error);
+            showToast("Failed to delete project: " + error.message);
         }
     };
 
