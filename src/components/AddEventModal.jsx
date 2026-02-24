@@ -14,8 +14,10 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     const [won, setWon] = useState(false);
     const [links, setLinks] = useState([{ label: '', url: '' }]);
     const [parentId, setParentId] = useState(null);
+    const [lastDate, setLastDate] = useState(new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'));
     const [isFromCalendarOpen, setIsFromCalendarOpen] = useState(false);
     const [isToCalendarOpen, setIsToCalendarOpen] = useState(false);
+    const [isLastCalendarOpen, setIsLastCalendarOpen] = useState(false);
     const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
     const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
     const [viewDate, setViewDate] = useState(new Date());
@@ -40,6 +42,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
         setWon(false);
         setLinks([{ label: '', url: '' }]);
         setParentId(null);
+        setLastDate(formatDateLocal(new Date()));
     };
 
     useEffect(() => {
@@ -64,6 +67,14 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             setProjectId(eventToEdit.projectId?.toString() || '');
             setLinks(eventToEdit.links?.length > 0 ? [...eventToEdit.links] : [{ label: '', url: '' }]);
             setParentId(eventToEdit.parentId || null);
+            if (eventToEdit.lastDate) {
+                const d = new Date(eventToEdit.lastDate);
+                if (!isNaN(d.getTime())) {
+                    setLastDate(formatDateLocal(d));
+                }
+            } else {
+                setLastDate(formatDateLocal(new Date()));
+            }
         } else {
             resetForm();
         }
@@ -99,6 +110,8 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
         const fromDateObj = new Date(fy, fm - 1, fd);
         const [ty, tm, td] = toDate.split('-').map(Number);
         const toDateObj = new Date(ty, tm - 1, td);
+        const [ly, lm, ld] = lastDate.split('-').map(Number);
+        const lastDateObj = new Date(ly, lm - 1, ld);
 
         // Colors mapping based on type
         const colors = {
@@ -106,7 +119,8 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             'MEETUP': 'from-blue-400 to-cyan-500',
             'WORKSHOP': 'from-purple-500 to-pink-600',
             'CONFERENCE': 'from-amber-400 to-orange-500',
-            'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]'
+            'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]',
+            'ROBOTICS': 'from-[#22C7B5] to-[#22C7B5]'
         };
 
         const t = (type || '').toUpperCase();
@@ -126,7 +140,8 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             projectId: projectId?.toString(),
             won: type === 'HACKATHON' ? won : false,
             links: links.filter(l => l.label && l.url),
-            parentId: parentId
+            parentId: parentId,
+            lastDate: lastDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
         });
 
         resetForm();
@@ -165,17 +180,52 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                     </div>
 
                     <div className="max-h-[min(650px,80vh)] overflow-y-auto custom-scrollbar px-8 pb-8 pt-6 space-y-6">
-                        {/* Title Input */}
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Event Name"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full bg-transparent text-2xl font-black text-white placeholder-gray-600 border-none focus:ring-0 focus:outline-none transition-all"
-                                autoFocus
-                            />
-                            <div className="h-[1px] w-full bg-gradient-to-r from-pink-500/50 to-transparent mt-1"></div>
+                        {/* Title & Type Input Container */}
+                        <div className="flex items-end gap-x-4">
+                            <div className="flex-1 relative">
+                                <input
+                                    type="text"
+                                    placeholder="Event Name"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full bg-transparent text-2xl font-black text-white placeholder-gray-600 border-none focus:ring-0 focus:outline-none transition-all"
+                                    autoFocus
+                                />
+                                <div className="h-[1px] w-full bg-gradient-to-r from-pink-500/50 to-transparent mt-1"></div>
+                            </div>
+
+                            {/* Type Selector (Moved to Top Right) */}
+                            <div className="relative mb-1">
+                                <button
+                                    onClick={() => {
+                                        setIsTypeDropdownOpen(!isTypeDropdownOpen);
+                                        setIsProjectDropdownOpen(false);
+                                        setIsFromCalendarOpen(false);
+                                        setIsToCalendarOpen(false);
+                                        setIsLastCalendarOpen(false);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group/type"
+                                >
+                                    <Tag size={12} className="text-pink-500" />
+                                    <span className="text-[10px] font-black text-white uppercase tracking-wider">{type.toLowerCase()}</span>
+                                    <ChevronDown size={12} className={`text-gray-500 transition-transform ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isTypeDropdownOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-40 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200">
+                                        {['HACKATHON', 'COLLECTION', 'WORKSHOP', 'MEETUP', 'CONFERENCE', 'ROBOTICS'].map(t => (
+                                            <button
+                                                key={t}
+                                                onClick={() => { setType(t); setIsTypeDropdownOpen(false); }}
+                                                className={`w-full px-4 py-2 text-left text-[10px] font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${type === t ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
+                                            >
+                                                <span className="capitalize">{t.toLowerCase()}</span>
+                                                {type === t && <Check size={10} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Meta Grid */}
@@ -333,37 +383,58 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                 )}
                             </div>
 
-                            {/* Type Selector */}
+                            {/* Last Date Picker (Replaced Type Selector) */}
                             <div className="space-y-1 relative">
                                 <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
-                                    <Tag size={11} />
-                                    <span>Type</span>
+                                    <CalendarIcon size={11} />
+                                    <span>Last Date</span>
                                 </div>
                                 <button
                                     onClick={() => {
-                                        setIsTypeDropdownOpen(!isTypeDropdownOpen);
-                                        setIsProjectDropdownOpen(false);
+                                        setIsLastCalendarOpen(!isLastCalendarOpen);
                                         setIsFromCalendarOpen(false);
                                         setIsToCalendarOpen(false);
+                                        setIsProjectDropdownOpen(false);
+                                        setIsTypeDropdownOpen(false);
                                     }}
-                                    className="w-full bg-transparent text-xs font-bold text-gray-300 flex items-center justify-between py-1 group/select"
+                                    className="text-xs text-gray-300 cursor-pointer hover:text-white transition-colors block w-full text-left py-1"
                                 >
-                                    <span className="capitalize">{type.toLowerCase()}</span>
-                                    <ChevronDown size={14} className={`text-gray-600 group-hover/select:text-gray-400 transition-transform ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
+                                    {new Date(lastDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </button>
 
-                                {isTypeDropdownOpen && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200">
-                                        {['HACKATHON', 'COLLECTION', 'WORKSHOP'].map(t => (
-                                            <button
-                                                key={t}
-                                                onClick={() => { setType(t); setIsTypeDropdownOpen(false); }}
-                                                className={`w-full px-4 py-2 text-left text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${type === t ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
-                                            >
-                                                <span className="capitalize">{t.toLowerCase()}</span>
-                                                {type === t && <Check size={12} />}
+                                {isLastCalendarOpen && (
+                                    <div className="absolute top-full right-0 mt-4 w-[280px] bg-[#1A1D21] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[120] p-4 scale-in-center animate-in fade-in zoom-in duration-200">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
+                                                <ChevronLeft size={16} />
                                             </button>
-                                        ))}
+                                            <div className="text-[11px] font-black text-white uppercase tracking-widest">
+                                                {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                            </div>
+                                            <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
+                                                <ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-7 gap-1 mb-2">
+                                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                                                <div key={d} className="text-[8px] font-black text-gray-600 text-center uppercase py-1">{d}</div>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-7 gap-1">
+                                            {generateDays().map((d, i) => {
+                                                const isSelected = formatDateLocal(d.date) === lastDate;
+                                                const isToday = formatDateLocal(d.date) === formatDateLocal(new Date());
+                                                return (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => { setLastDate(formatDateLocal(d.date)); setIsLastCalendarOpen(false); }}
+                                                        className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
+                                                    >
+                                                        {d.day}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 )}
                             </div>

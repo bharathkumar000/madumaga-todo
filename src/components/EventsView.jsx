@@ -15,7 +15,8 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
             'WORKSHOP': 'from-purple-500 to-indigo-600',
             'MEETUP': 'from-blue-400 to-cyan-500',
             'CONFERENCE': 'from-amber-400 to-orange-500',
-            'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]'
+            'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]',
+            'ROBOTICS': 'from-[#22C7B5] to-[#22C7B5]'
         };
         return colors[t] || fallbackColor;
     };
@@ -27,7 +28,8 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
             'WORKSHOP': 'text-purple-500',
             'MEETUP': 'text-blue-400',
             'CONFERENCE': 'text-amber-500',
-            'COLLECTION': 'text-[#4F46E5]'
+            'COLLECTION': 'text-[#4F46E5]',
+            'ROBOTICS': 'text-[#22C7B5]'
         };
         return colors[t] || 'text-primary';
     };
