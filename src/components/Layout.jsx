@@ -98,16 +98,16 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                             onClick={() => onNavigate('calendar')}
                         />
                         <NavItem
-                            icon={<List size={20} />}
-                            label="Projects"
-                            active={currentView === 'projects'}
-                            onClick={() => onNavigate('projects')}
-                        />
-                        <NavItem
                             icon={<CheckSquare size={20} />}
                             label="Tasks"
                             active={currentView === 'tasks'}
                             onClick={() => onNavigate('tasks')}
+                        />
+                        <NavItem
+                            icon={<List size={20} />}
+                            label="Projects"
+                            active={currentView === 'projects'}
+                            onClick={() => onNavigate('projects')}
                         />
                         <NavItem
                             icon={<Trophy size={20} />}

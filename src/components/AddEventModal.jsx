@@ -116,9 +116,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
         // Colors mapping based on type
         const colors = {
             'HACKATHON': 'from-pink-500 to-rose-500',
-            'MEETUP': 'from-blue-400 to-cyan-500',
             'WORKSHOP': 'from-purple-500 to-pink-600',
-            'CONFERENCE': 'from-amber-400 to-orange-500',
             'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]',
             'ROBOTICS': 'from-[#22C7B5] to-[#22C7B5]'
         };
@@ -213,7 +211,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
 
                                 {isTypeDropdownOpen && (
                                     <div className="absolute top-full right-0 mt-2 w-40 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200">
-                                        {['HACKATHON', 'COLLECTION', 'WORKSHOP', 'MEETUP', 'CONFERENCE', 'ROBOTICS'].map(t => (
+                                        {['HACKATHON', 'COLLECTION', 'WORKSHOP', 'ROBOTICS'].map(t => (
                                             <button
                                                 key={t}
                                                 onClick={() => { setType(t); setIsTypeDropdownOpen(false); }}

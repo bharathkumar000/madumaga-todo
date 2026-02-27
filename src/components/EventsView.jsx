@@ -13,8 +13,6 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
         const colors = {
             'HACKATHON': 'from-pink-500 to-rose-500',
             'WORKSHOP': 'from-purple-500 to-indigo-600',
-            'MEETUP': 'from-blue-400 to-cyan-500',
-            'CONFERENCE': 'from-amber-400 to-orange-500',
             'COLLECTION': 'from-[#4F46E5] to-[#4F46E5]',
             'ROBOTICS': 'from-[#22C7B5] to-[#22C7B5]'
         };
@@ -26,8 +24,6 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
         const colors = {
             'HACKATHON': 'text-pink-500',
             'WORKSHOP': 'text-purple-500',
-            'MEETUP': 'text-blue-400',
-            'CONFERENCE': 'text-amber-500',
             'COLLECTION': 'text-[#4F46E5]',
             'ROBOTICS': 'text-[#22C7B5]'
         };
@@ -187,36 +183,7 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                             )}
                         </div>
 
-                        {/* Collection Info (Moved here) */}
-                        <div className="p-8 rounded-[2.5rem] bg-[#16191D] border border-white/5 relative overflow-hidden group">
-                            <div className={`absolute -top-12 -right-12 w-32 h-32 blur-[40px] rounded-full opacity-20 bg-gradient-to-br ${eventColor}`}></div>
-                            <div className="relative z-10 space-y-6">
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-white/40 font-bold text-[10px] uppercase tracking-widest">
-                                        <Sparkles size={14} />
-                                        <span>Collection Info</span>
-                                    </div>
-                                    <p className="text-gray-400 text-sm font-medium leading-relaxed italic">
-                                        {activeCollection.description || "Aggregating knowledge and events for centralized management."}
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-4">
-                                    <button
-                                        onClick={() => onEdit(activeCollection)}
-                                        className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Pencil size={14} /> Edit Collection
-                                    </button>
-                                    <button
-                                        onClick={() => setEventToDelete(activeCollection)}
-                                        className="flex-1 py-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 text-rose-500/60 font-black text-[10px] uppercase tracking-widest hover:bg-rose-500/10 hover:text-rose-500 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Trash2 size={14} /> Delete Archive
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        {/* Collection Actions Moved or Removed per user request */}
                     </div>
 
                     {/* Right Column (Meta & Actions) */}
