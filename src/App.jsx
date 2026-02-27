@@ -112,17 +112,65 @@ function App() {
     useEffect(() => {
         if (!currentUser?.id) return;
 
-        handleRefresh();
+        const fetchData = async () => {
+            try {
+                const { data: tasksData, error: tasksError } = await supabase.from('tasks').select('*');
+                if (tasksError) throw tasksError;
+                if (tasksData) setTasks(tasksData.map(t => ({
+                    ...t,
+                    title: t.task_name,
+                    id: t.id,
+                    projectId: t.project_id,
+                    userId: t.user_id,
+                    assignedTo: t.assigned_to,
+                    rawDate: t.raw_date
+                })));
 
-        // Realtime Subscriptions
+                const { data: projectsData, error: projError } = await supabase.from('projects').select('*');
+                if (projError) throw projError;
+                if (projectsData) setProjects(projectsData.map(p => ({
+                    ...p,
+                    name: p.title,
+                    id: p.id,
+                    userId: p.user_id
+                })));
+
+                const { data: eventsData, error: eventsError } = await supabase.from('events').select('*');
+                if (eventsError) throw eventsError;
+                if (eventsData) setEvents(eventsData.map(e => ({
+                    ...e,
+                    toDate: e.to_date,
+                    buildingDescription: e.building_description,
+                    projectId: e.project_id,
+                    userId: e.user_id
+                })));
+
+                const { data: usersData, error: usersError } = await supabase.from('users').select('*');
+                if (usersError) throw usersError;
+                if (usersData) setAllUsers(usersData);
+            } catch (err) {
+                console.error("Critical Error Fetching Data:", err.message);
+            }
+        };
+
+        fetchData();
+
+        // Realtime Subscription
         const channel = supabase
             .channel('db_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+                const mapTask = (t) => ({
+                    ...t,
+                    title: t.task_name,
+                    id: t.id,
+                    projectId: t.project_id,
+                    userId: t.user_id,
+                    assignedTo: t.assigned_to,
+                    rawDate: t.raw_date
+                });
+
                 if (payload.eventType === 'INSERT') {
-                    setTasks(prev => {
-                        if (prev.find(t => t.id === payload.new.id)) return prev;
-                        return [...prev, mapTask(payload.new)];
-                    });
+                    setTasks(prev => [...prev, mapTask(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
                     const updated = mapTask(payload.new);
                     setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
@@ -131,28 +179,35 @@ function App() {
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
-                const mapProj = (p) => ({ ...p, name: p.title, id: p.id, userId: p.user_id });
+                const mapProject = (p) => ({
+                    ...p,
+                    name: p.title,
+                    id: p.id,
+                    userId: p.user_id
+                });
+
                 if (payload.eventType === 'INSERT') {
-                    setProjects(prev => {
-                        if (prev.find(p => p.id === payload.new.id)) return prev;
-                        return [...prev, mapProj(payload.new)];
-                    });
+                    setProjects(prev => [...prev, mapProject(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    const updated = mapProj(payload.new);
+                    const updated = mapProject(payload.new);
                     setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
                 } else if (payload.eventType === 'DELETE') {
                     setProjects(prev => prev.filter(p => p.id !== payload.old.id));
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
-                const mapEv = (e) => ({ ...e, toDate: e.to_date, buildingDescription: e.building_description, projectId: e.project_id, userId: e.user_id, teams: e.teams || [], parentId: e.parent_id });
+                const mapEvent = (e) => ({
+                    ...e,
+                    toDate: e.to_date,
+                    buildingDescription: e.building_description,
+                    projectId: e.project_id,
+                    userId: e.user_id
+                });
+
                 if (payload.eventType === 'INSERT') {
-                    setEvents(prev => {
-                        if (prev.find(e => e.id === payload.new.id)) return prev;
-                        return [...prev, mapEv(payload.new)];
-                    });
+                    setEvents(prev => [...prev, mapEvent(payload.new)]);
                 } else if (payload.eventType === 'UPDATE') {
-                    const updated = mapEv(payload.new);
+                    const updated = mapEvent(payload.new);
                     setEvents(prev => prev.map(e => e.id === updated.id ? updated : e));
                 } else if (payload.eventType === 'DELETE') {
                     setEvents(prev => prev.filter(e => e.id !== payload.old.id));
@@ -296,35 +351,10 @@ function App() {
                 const { data, error: insertError } = await supabase.from('tasks').insert([fullPayload]).select();
 
                 if (insertError) {
-                    console.error("Full Sync failed, attempting smart fallback:", insertError.message);
-
-                    const primaryAssignee = Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0 ? taskData.assignedTo[0] : (typeof taskData.assignedTo === 'string' ? taskData.assignedTo : null);
-
-                    const barePayload = {
-                        task_name: taskData.title,
-                        user_id: user.id,
-                        assigned_to: primaryAssignee,
-                        description: taskData.description || null
-                    };
-
-                    // Only add project_id to bare payload if we actually have one
-                    if (safeProjectId) barePayload.project_id = safeProjectId;
-
-                    const { data: bareData, error: bareError } = await supabase.from('tasks').insert([barePayload]).select();
-
-                    if (bareError) {
-                        showToast("DATABASE ERROR: " + bareError.message);
-                        return;
-                    }
-
-                    if (bareData && bareData.length > 0) {
-                        setTasks(prev => [...prev, mapTask(bareData[0])]);
-                    }
-                } else if (data && data.length > 0) {
-                    setTasks(prev => {
-                        if (prev.find(t => t.id === data[0].id)) return prev;
-                        return [...prev, mapTask(data[0])];
-                    });
+                    console.error("Error adding task:", insertError.message);
+                    throw insertError;
+                } else {
+                    console.log("Task added successfully via Supabase.");
                 }
             }
         } catch (error) {
@@ -617,14 +647,7 @@ function App() {
             }]).select();
 
             if (error) throw error;
-
-            if (newTasks && newTasks[0]) {
-                const mapped = mapTask(newTasks[0]);
-                setTasks(prev => {
-                    if (prev.find(t => t.id === mapped.id)) return prev;
-                    return [...prev, mapped];
-                });
-            }
+            console.log("Task duplicated successfully.");
         } catch (error) {
             console.error("Error duplicating task:", error);
         }
@@ -634,18 +657,14 @@ function App() {
             const mappedUpdates = {};
             if (updates.title !== undefined) mappedUpdates.task_name = updates.title;
             if (updates.projectId !== undefined) mappedUpdates.project_id = updates.projectId;
-            if (updates.assignedTo !== undefined) {
-                // Normalize assigned_to: single UUID expected by DB
-                mappedUpdates.assigned_to = Array.isArray(updates.assignedTo)
-                    ? (updates.assignedTo.length > 0 ? updates.assignedTo[0] : null)
-                    : (updates.assignedTo || null);
-            }
+            if (updates.assignedTo !== undefined) mappedUpdates.assigned_to = Array.isArray(updates.assignedTo) ? updates.assignedTo[0] : updates.assignedTo;
             if (updates.rawDate !== undefined) mappedUpdates.raw_date = updates.rawDate;
+
+            // Direct mapping for matching keys
             if (updates.status !== undefined) mappedUpdates.status = updates.status;
             if (updates.priority !== undefined) mappedUpdates.priority = updates.priority;
             if (updates.date !== undefined) mappedUpdates.date = updates.date;
             if (updates.time !== undefined) mappedUpdates.time = updates.time;
-            if (updates.description !== undefined) mappedUpdates.description = updates.description;
 
             if (Object.keys(mappedUpdates).length === 0) return;
             const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);
