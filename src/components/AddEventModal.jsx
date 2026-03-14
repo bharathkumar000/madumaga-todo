@@ -1,8 +1,8 @@
 // src/components/AddEventModal.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Calendar as CalendarIcon, MapPin, AlignLeft, ChevronLeft, ChevronRight, Tag, Folder, Link as LinkIcon, Plus, Trash2, ChevronDown, Check, Trophy } from 'lucide-react';
+import { X, Calendar as CalendarIcon, MapPin, AlignLeft, ChevronLeft, ChevronRight, Tag, Folder, Link as LinkIcon, Plus, Trash2, ChevronDown, Check, Trophy, Bell, Users, IndianRupee } from 'lucide-react';
 
-const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = null }) => {
+const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = null, allEvents = [] }) => {
     const [title, setTitle] = useState('');
     const [fromDate, setFromDate] = useState(new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'));
     const [toDate, setToDate] = useState(new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'));
@@ -14,7 +14,9 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     const [won, setWon] = useState(false);
     const [links, setLinks] = useState([{ label: '', url: '' }]);
     const [parentId, setParentId] = useState(null);
-    const [lastDate, setLastDate] = useState(new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'));
+    const [lastDate, setLastDate] = useState(null);
+    const [team, setTeam] = useState('');
+    const [price, setPrice] = useState('');
     const [isFromCalendarOpen, setIsFromCalendarOpen] = useState(false);
     const [isToCalendarOpen, setIsToCalendarOpen] = useState(false);
     const [isLastCalendarOpen, setIsLastCalendarOpen] = useState(false);
@@ -42,8 +44,13 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
         setWon(false);
         setLinks([{ label: '', url: '' }]);
         setParentId(null);
-        setLastDate(formatDateLocal(new Date()));
+        setLastDate(null);
+        setTeam('');
+        setPrice('');
     };
+
+    const parentEvent = parentId ? allEvents.find(e => String(e.id) === String(parentId)) : null;
+    const isProjectInherited = !!(parentEvent && parentEvent.projectId);
 
     useEffect(() => {
         if (eventToEdit) {
@@ -60,25 +67,44 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                     setToDate(formatDateLocal(d));
                 }
             }
-            setLocation(eventToEdit.location || '');
-            setType(eventToEdit.type || 'HACKATHON');
             setDescription(eventToEdit.description || '');
             setBuildingDescription(eventToEdit.buildingDescription || '');
-            setProjectId(eventToEdit.projectId?.toString() || '');
+
+            // Handle Parent and Inheritance
+            const pId = eventToEdit.parentId || null;
+            setParentId(pId);
+
+            const parent = pId ? allEvents.find(e => String(e.id) === String(pId)) : null;
+
+            if (parent && parent.location && !eventToEdit.id) {
+                setLocation(parent.location);
+            } else {
+                setLocation(eventToEdit.location || '');
+            }
+            
+            if (parent && parent.projectId) {
+                setProjectId(parent.projectId.toString());
+            } else {
+                setProjectId(eventToEdit.projectId?.toString() || '');
+            }
+
+            setTeam(eventToEdit.team || '');
+            setPrice(eventToEdit.price || '');
+
             setLinks(eventToEdit.links?.length > 0 ? [...eventToEdit.links] : [{ label: '', url: '' }]);
-            setParentId(eventToEdit.parentId || null);
+            
             if (eventToEdit.lastDate) {
                 const d = new Date(eventToEdit.lastDate);
                 if (!isNaN(d.getTime())) {
                     setLastDate(formatDateLocal(d));
                 }
             } else {
-                setLastDate(formatDateLocal(new Date()));
+                setLastDate(null);
             }
         } else {
             resetForm();
         }
-    }, [eventToEdit, isOpen]);
+    }, [eventToEdit, isOpen, allEvents]);
 
     const generateDays = () => {
         const year = viewDate.getFullYear();
@@ -110,8 +136,13 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
         const fromDateObj = new Date(fy, fm - 1, fd);
         const [ty, tm, td] = toDate.split('-').map(Number);
         const toDateObj = new Date(ty, tm - 1, td);
-        const [ly, lm, ld] = lastDate.split('-').map(Number);
-        const lastDateObj = new Date(ly, lm - 1, ld);
+
+        let finalLastDate = null;
+        if (lastDate) {
+            const [ly, lm, ld] = lastDate.split('-').map(Number);
+            const lastDateObj = new Date(ly, lm - 1, ld);
+            finalLastDate = lastDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
 
         // Colors mapping based on type
         const colors = {
@@ -139,7 +170,9 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             won: type === 'HACKATHON' ? won : false,
             links: links.filter(l => l.label && l.url),
             parentId: parentId,
-            lastDate: lastDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+            lastDate: finalLastDate,
+            team,
+            price
         });
 
         resetForm();
@@ -176,6 +209,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                             <X size={18} />
                         </button>
                     </div>
+
 
                     <div className="max-h-[min(650px,80vh)] overflow-y-auto custom-scrollbar px-8 pb-8 pt-6 space-y-6">
                         {/* Title & Type Input Container */}
@@ -226,6 +260,37 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* Team & Price Selector (Side by Side) */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1 relative">
+                                <div className="text-[9px] text-gray-500 uppercase tracking-widest font-black">
+                                    Team Members
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Rishith, Srinivas..."
+                                    value={team}
+                                    onChange={(e) => setTeam(e.target.value)}
+                                    className="w-full bg-transparent text-xs font-bold text-white placeholder-gray-700 border-none focus:ring-0 focus:outline-none py-1.5"
+                                />
+                                <div className="h-[1px] w-full bg-white/5 mt-0.5"></div>
+                            </div>
+
+                            <div className="space-y-1 relative">
+                                <div className="text-[9px] text-gray-500 uppercase tracking-widest font-black">
+                                    Event Price / Budget
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Free, ₹5,000..."
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    className="w-full bg-transparent text-xs font-bold text-white placeholder-gray-700 border-none focus:ring-0 focus:outline-none py-1.5"
+                                />
+                                <div className="h-[1px] w-full bg-white/5 mt-0.5"></div>
                             </div>
                         </div>
 
@@ -341,120 +406,143 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                 )}
                             </div>
 
-                            {/* Project Selector */}
-                            <div className="space-y-1 relative">
-                                <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
-                                    <Folder size={11} />
-                                    <span>Link to Project</span>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setIsProjectDropdownOpen(!isProjectDropdownOpen);
-                                        setIsTypeDropdownOpen(false);
-                                        setIsFromCalendarOpen(false);
-                                        setIsToCalendarOpen(false);
-                                    }}
-                                    className="w-full bg-transparent text-xs font-bold text-gray-300 flex items-center justify-between py-1 group/select"
-                                >
-                                    <span className="truncate max-w-[150px]">
-                                        {projects.find(p => String(p.id) === String(projectId))?.name || 'Select Project...'}
-                                    </span>
-                                    <ChevronDown size={14} className={`text-gray-600 group-hover/select:text-gray-400 transition-transform flex-shrink-0 ${isProjectDropdownOpen ? 'rotate-180' : ''}`} />
-                                </button>
-
-                                {isProjectDropdownOpen && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200">
-                                        <button
-                                            onClick={() => { setProjectId(''); setIsProjectDropdownOpen(false); }}
-                                            className="w-full px-4 py-2 text-left text-xs font-bold text-gray-400 hover:bg-white/5 transition-colors"
-                                        >
-                                            None
-                                        </button>
-                                        {projects.map(p => (
-                                            <button
-                                                key={p.id}
-                                                onClick={() => { setProjectId(p.id.toString()); setIsProjectDropdownOpen(false); }}
-                                                className={`w-full px-4 py-2 text-left text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${String(projectId) === String(p.id) ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
-                                            >
-                                                <span className="truncate">{p.name}</span>
-                                                {String(projectId) === String(p.id) && <Check size={12} />}
-                                            </button>
-                                        ))}
+                            {/* Project Selector - Hidden for sub-events since it's inherited and shown in banner */}
+                            {!parentId && (
+                                <div className="space-y-1 relative">
+                                    <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
+                                        <Folder size={11} />
+                                        <span>Link to Project</span>
                                     </div>
-                                )}
-                            </div>
-
-                            {/* Registration Last Date Picker (Replaced Type Selector) */}
-                            <div className="space-y-1 relative">
-                                <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
-                                    <Bell size={11} className="text-pink-500" />
-                                    <span>Registration Last Date</span>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setIsLastCalendarOpen(!isLastCalendarOpen);
-                                        setIsFromCalendarOpen(false);
-                                        setIsToCalendarOpen(false);
-                                        setIsProjectDropdownOpen(false);
-                                        setIsTypeDropdownOpen(false);
-                                    }}
-                                    className="text-xs text-gray-300 cursor-pointer hover:text-white transition-colors block w-full text-left py-1"
-                                >
-                                    {new Date(lastDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                </button>
-
-                                {isLastCalendarOpen && (
-                                    <div className="absolute top-full right-0 mt-4 w-[280px] bg-[#1A1D21] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[120] p-4 scale-in-center animate-in fade-in zoom-in duration-200">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
-                                                <ChevronLeft size={16} />
-                                            </button>
-                                            <div className="text-[11px] font-black text-white uppercase tracking-widest">
-                                                {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                                            </div>
-                                            <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
-                                                <ChevronRight size={16} />
-                                            </button>
+                                    <button
+                                        onClick={() => {
+                                            if (isProjectInherited) return; // Lock if inherited
+                                            setIsProjectDropdownOpen(!isProjectDropdownOpen);
+                                            setIsTypeDropdownOpen(false);
+                                            setIsFromCalendarOpen(false);
+                                            setIsToCalendarOpen(false);
+                                        }}
+                                        className={`w-full bg-transparent text-xs font-bold flex items-center justify-between py-1 group/select ${isProjectInherited ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
+                                    >
+                                        <div className="flex flex-col items-start min-w-0">
+                                            <span className="truncate max-w-[150px] text-gray-300">
+                                                {projects.find(p => String(p.id) === String(projectId))?.name || 'Select Project...'}
+                                            </span>
+                                            {isProjectInherited && (
+                                                <span className="text-[7px] text-pink-500 font-black uppercase tracking-widest mt-0.5 whitespace-nowrap">
+                                                    Connected to {parentEvent?.title}
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="grid grid-cols-7 gap-1 mb-2">
-                                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                                                <div key={d} className="text-[8px] font-black text-gray-600 text-center uppercase py-1">{d}</div>
+                                        {!isProjectInherited && (
+                                            <ChevronDown size={14} className={`text-gray-600 group-hover/select:text-gray-400 transition-transform flex-shrink-0 ${isProjectDropdownOpen ? 'rotate-180' : ''}`} />
+                                        )}
+                                        {isProjectInherited && <Check size={12} className="text-pink-500 flex-shrink-0" />}
+                                    </button>
+
+                                    {isProjectDropdownOpen && !isProjectInherited && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200">
+                                            <button
+                                                onClick={() => { setProjectId(''); setIsProjectDropdownOpen(false); }}
+                                                className="w-full px-4 py-2 text-left text-xs font-bold text-gray-400 hover:bg-white/5 transition-colors"
+                                            >
+                                                None
+                                            </button>
+                                            {projects.map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    onClick={() => { setProjectId(p.id.toString()); setIsProjectDropdownOpen(false); }}
+                                                    className={`w-full px-4 py-2 text-left text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${String(projectId) === String(p.id) ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
+                                                >
+                                                    <span className="truncate">{p.name}</span>
+                                                    {String(projectId) === String(p.id) && <Check size={12} />}
+                                                </button>
                                             ))}
                                         </div>
-                                        <div className="grid grid-cols-7 gap-1">
-                                            {generateDays().map((d, i) => {
-                                                const isSelected = formatDateLocal(d.date) === lastDate;
-                                                const isToday = formatDateLocal(d.date) === formatDateLocal(new Date());
-                                                return (
-                                                    <button
-                                                        key={i}
-                                                        onClick={() => { setLastDate(formatDateLocal(d.date)); setIsLastCalendarOpen(false); }}
-                                                        className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
-                                                    >
-                                                        {d.day}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Registration Last Date Picker Container - Only if not sub-event */}
+                            {!parentId && (
+                                <div className="space-y-1 relative">
+                                    <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
+                                        <Bell size={11} className="text-pink-500" />
+                                        <span>Registration Last Date</span>
                                     </div>
-                                )}
-                            </div>
+                                    <button
+                                        onClick={() => {
+                                            setIsLastCalendarOpen(!isLastCalendarOpen);
+                                            setIsFromCalendarOpen(false);
+                                            setIsToCalendarOpen(false);
+                                            setIsProjectDropdownOpen(false);
+                                            setIsTypeDropdownOpen(false);
+                                        }}
+                                        className="text-xs text-gray-300 cursor-pointer hover:text-white transition-colors block w-full text-left py-1 font-black"
+                                    >
+                                        {lastDate ? new Date(lastDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'NONE'}
+                                    </button>
+
+                                    {isLastCalendarOpen && (
+                                        <div className="absolute top-full right-0 mt-4 w-[280px] bg-[#1A1D21] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[120] p-4 scale-in-center animate-in fade-in zoom-in duration-200">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
+                                                    <ChevronLeft size={16} />
+                                                </button>
+                                                <div className="text-[11px] font-black text-white uppercase tracking-widest">
+                                                    {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                                </div>
+                                                <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
+                                                    <ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-7 gap-1 mb-2">
+                                                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                                                    <div key={d} className="text-[8px] font-black text-gray-600 text-center uppercase py-1">{d}</div>
+                                                ))}
+                                            </div>
+                                            <div className="grid grid-cols-7 gap-1">
+                                                {generateDays().map((d, i) => {
+                                                    const isSelected = formatDateLocal(d.date) === lastDate;
+                                                    const isToday = formatDateLocal(d.date) === formatDateLocal(new Date());
+                                                    return (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => { setLastDate(formatDateLocal(d.date)); setIsLastCalendarOpen(false); }}
+                                                            className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
+                                                        >
+                                                            {d.day}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
-                        {/* Location */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-                                <MapPin size={12} />
-                                <span>Location</span>
+                        {!parentId && (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+                                        <MapPin size={12} className={parentEvent?.location ? "text-pink-500" : ""} />
+                                        <span>Location</span>
+                                    </div>
+                                    {parentEvent?.location && (
+                                        <span className="text-[7px] text-pink-500 font-black uppercase tracking-widest">
+                                            Inherited from Collection
+                                        </span>
+                                    )}
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. San Francisco, Online..."
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
+                                    className={`w-full bg-white/[0.02] text-gray-300 placeholder-gray-700 focus:outline-none text-xs font-bold p-3 rounded-xl border transition-colors ${parentEvent?.location ? 'border-pink-500/20 focus:border-pink-500/40' : 'border-white/5 focus:border-white/10'}`}
+                                />
                             </div>
-                            <input
-                                type="text"
-                                placeholder="e.g. San Francisco, Online..."
-                                value={location}
-                                onChange={(e) => setLocation(e.target.value)}
-                                className="w-full bg-white/[0.02] text-gray-300 placeholder-gray-700 focus:outline-none text-xs font-bold p-3 rounded-xl border border-white/5 focus:border-white/10 transition-colors"
-                            />
-                        </div>
+                        )}
 
                         {/* Building Description */}
                         <div className="space-y-2">
@@ -471,58 +559,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                             />
                         </div>
 
-                        {/* Description */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-                                <AlignLeft size={12} />
-                                <span>Event Background Info</span>
-                            </div>
-                            <textarea
-                                placeholder="Additional details..."
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="w-full bg-white/[0.02] text-gray-300 placeholder-gray-700 resize-none focus:outline-none text-xs font-bold p-3 rounded-xl border border-white/5 min-h-[60px] focus:border-white/10 transition-colors"
-                                rows={2}
-                            />
-                        </div>
 
-                        {/* Links Section */}
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-                                    <LinkIcon size={12} />
-                                    <span>Important Links</span>
-                                </div>
-                                <button onClick={addLink} className="text-[10px] font-black text-pink-400 flex items-center gap-1 hover:text-pink-300">
-                                    <Plus size={12} /> ADD LINK
-                                </button>
-                            </div>
-                            <div className="space-y-2">
-                                {links.map((link, index) => (
-                                    <div key={index} className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Label (e.g. Website)"
-                                            value={link.label}
-                                            onChange={(e) => updateLink(index, 'label', e.target.value)}
-                                            className="w-1/3 bg-white/[0.02] text-gray-300 placeholder-gray-700 focus:outline-none text-[10px] font-bold p-2.5 rounded-lg border border-white/5 focus:border-white/10 transition-colors"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="URL (https://...)"
-                                            value={link.url}
-                                            onChange={(e) => updateLink(index, 'url', e.target.value)}
-                                            className="flex-1 bg-white/[0.02] text-gray-300 placeholder-gray-700 focus:outline-none text-[10px] font-bold p-2.5 rounded-lg border border-white/5 focus:border-white/10 transition-colors"
-                                        />
-                                        {links.length > 1 && (
-                                            <button onClick={() => removeLink(index)} className="p-2 text-gray-600 hover:text-rose-500 transition-colors">
-                                                <Trash2 size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
 
                         {/* Hackathon Win Toggle */}
                         {type === 'HACKATHON' && (
