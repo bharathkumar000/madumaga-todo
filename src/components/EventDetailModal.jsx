@@ -7,6 +7,7 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
 
     const [isAddingMember, setIsAddingMember] = useState(null); // teamId being added to
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
 
     const linkedProject = projects.find(p => String(p.id) === String(event.projectId));
 
@@ -25,14 +26,25 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
 
     const teams = event.teams || [];
 
-    const handleAddTeam = () => {
-        const newTeam = {
+    const handleSelectMember = (user) => {
+        if (!event) return;
+        const currentTeams = event.teams || [];
+        
+        // Prevent duplicates
+        if (currentTeams.some(t => t.name === user.name)) {
+            showToast?.(`${user.name} is already a member`, 'error');
+            return;
+        }
+
+        const newMember = {
             id: crypto.randomUUID(),
-            name: `New Member`,
-            role: 'Position',
+            name: user.name,
+            role: 'CORE MEMBER',
+            avatar: user.avatar,
             members: []
         };
-        onUpdateEvent(event.id, { teams: [...teams, newTeam] });
+        onUpdateEvent(event.id, { teams: [...currentTeams, newMember] });
+        setIsMemberDropdownOpen(false);
     };
 
     const handleRemoveTeam = (teamId) => {
@@ -223,54 +235,68 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                             </div>
                         )}
 
-                        {/* Participating Teams Section */}
+                        {/* Participating Members Section */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-white/40 font-bold text-[10px] uppercase tracking-widest">
                                     <Users size={14} />
-                                    <span>Participating Teams</span>
+                                    <span>Participating Members</span>
                                 </div>
-                                <button
-                                    onClick={handleAddTeam}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold text-white uppercase tracking-wider"
-                                >
-                                    <Plus size={12} />
-                                    Add Team
-                                </button>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold text-white uppercase tracking-wider"
+                                    >
+                                        <Plus size={14} /> Add Member
+                                    </button>
+
+                                    {isMemberDropdownOpen && (
+                                        <div className="absolute top-full right-0 mt-2 w-56 bg-[#1A1D21] border border-white/10 rounded-2xl shadow-2xl z-[50] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="px-4 py-2 border-b border-white/5 mb-1">
+                                                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Select Team Member</p>
+                                            </div>
+                                            <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
+                                                {users.filter(u => !teams.some(t => t.name === u.name)).length === 0 ? (
+                                                    <div className="px-4 py-3 text-[10px] text-gray-500 italic">All users added</div>
+                                                ) : (
+                                                    users.filter(u => !teams.some(t => t.name === u.name)).map(user => (
+                                                        <button
+                                                            key={user.id}
+                                                            onClick={() => handleSelectMember(user)}
+                                                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors group/u"
+                                                        >
+                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-black text-white uppercase">
+                                                                {user.name.charAt(0)}
+                                                            </div>
+                                                            <div className="flex-1 text-left">
+                                                                <p className="text-[11px] font-black text-white uppercase tracking-wider group-hover/u:text-indigo-400 transition-colors">{user.name}</p>
+                                                                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest leading-none mt-0.5">{user.role || 'Member'}</p>
+                                                            </div>
+                                                            <ArrowRight size={10} className="text-gray-700 group-hover/u:translate-x-0.5 transition-transform" />
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {teams.length === 0 ? (
-                                <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] text-center">
-                                    <p className="text-gray-500 text-sm italic">No members added yet.</p>
+                                <div className="p-8 rounded-3xl border border-dashed border-white/5 bg-white/[0.01] text-center">
+                                    <p className="text-gray-600 font-bold text-[10px] uppercase tracking-widest italic">No members added yet.</p>
                                 </div>
                             ) : (
-                                <div className="bg-[#1A1D21] border border-white/5 rounded-3xl overflow-hidden divide-y divide-white/[0.03]">
+                                <div className="flex flex-row flex-wrap items-center gap-2">
                                     {teams.map(team => (
-                                        <div key={team.id} className="p-4 flex items-center justify-between group hover:bg-white/[0.02] transition-colors">
-                                            <div className="flex items-center gap-6 flex-1">
-                                                <div className="flex-1">
-                                                    <InlineInput
-                                                        initialValue={team.name}
-                                                        onSave={(newName) => handleUpdateTeam(team.id, { name: newName })}
-                                                        placeholder="Name"
-                                                        className="bg-transparent text-white font-bold text-sm uppercase tracking-wider focus:outline-none focus:border-b border-white/20 pb-0.5 w-full"
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <InlineInput
-                                                        initialValue={team.role || ''}
-                                                        onSave={(newRole) => handleUpdateTeam(team.id, { role: newRole })}
-                                                        placeholder="Position / Role"
-                                                        className="bg-transparent text-gray-400 font-bold text-[10px] uppercase tracking-[0.2em] focus:outline-none focus:border-b border-white/10 pb-0.5 w-full"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                onClick={() => handleRemoveTeam(team.id)}
-                                                className="ml-4 p-1.5 rounded-lg hover:bg-rose-500/10 text-gray-500 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                        <div key={team.id} className="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full bg-[#1A1D21] border border-white/5 hover:border-indigo-500/30 transition-all">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.3)]"></div>
+                                            <span className="text-[10px] font-black text-white uppercase tracking-widest pr-1">{team.name}</span>
+                                            <button 
+                                                onClick={() => handleRemoveTeam(team.id)} 
+                                                className="p-1 rounded-full text-gray-600 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
                                             >
-                                                <Trash2 size={14} />
+                                                <X size={10} />
                                             </button>
                                         </div>
                                     ))}
