@@ -144,7 +144,8 @@ function App() {
                     buildingDescription: e.building_description,
                     projectId: e.project_id,
                     userId: e.user_id,
-                    lastDate: e.last_date
+                    lastDate: e.last_date,
+                    parentId: e.parent_id
                 })));
 
                 const { data: usersData, error: usersError } = await supabase.from('users').select('*');
@@ -205,7 +206,8 @@ function App() {
                     buildingDescription: e.building_description,
                     projectId: e.project_id,
                     userId: e.user_id,
-                    lastDate: e.last_date
+                    lastDate: e.last_date,
+                    parentId: e.parent_id
                 });
 
                 if (payload.eventType === 'INSERT') {
