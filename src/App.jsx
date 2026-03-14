@@ -123,7 +123,8 @@ function App() {
                     projectId: t.project_id,
                     userId: t.user_id,
                     assignedTo: t.assigned_to,
-                    rawDate: t.raw_date
+                    rawDate: t.raw_date,
+                    duration: t.duration
                 })));
 
                 const { data: projectsData, error: projError } = await supabase.from('projects').select('*');
@@ -142,7 +143,8 @@ function App() {
                     toDate: e.to_date,
                     buildingDescription: e.building_description,
                     projectId: e.project_id,
-                    userId: e.user_id
+                    userId: e.user_id,
+                    lastDate: e.last_date
                 })));
 
                 const { data: usersData, error: usersError } = await supabase.from('users').select('*');
@@ -202,7 +204,8 @@ function App() {
                     toDate: e.to_date,
                     buildingDescription: e.building_description,
                     projectId: e.project_id,
-                    userId: e.user_id
+                    userId: e.user_id,
+                    lastDate: e.last_date
                 });
 
                 if (payload.eventType === 'INSERT') {
@@ -354,10 +357,9 @@ function App() {
                 if (insertError) {
                     console.error("Error adding task:", insertError.message);
                     throw insertError;
-                } else {
-                    console.log("Task added successfully via Supabase.");
                 }
             }
+            handleRefresh();
         } catch (error) {
             console.error("Critical error in handleAddTask:", error);
             showToast("Unexpected error: " + error.message);
@@ -375,6 +377,7 @@ function App() {
             if (error) throw error;
             if (data && data.length > 0) {
                 setProjects(prev => [...prev, { ...data[0], name: data[0].title, id: data[0].id }]);
+                handleRefresh();
             }
         } catch (error) {
             console.error("Error adding project:", error);
@@ -400,8 +403,10 @@ function App() {
                 project_id: newEvent.projectId || null,
                 won: newEvent.won || false,
                 user_id: user.id,
-                completed: false
+                completed: newEvent.completed ?? false
             };
+            
+            if (newEvent.lastDate) mappedEvent.last_date = newEvent.lastDate;
 
             // Only add complex objects if they have data to avoid schema errors if columns missing
             if (newEvent.parentId) mappedEvent.parent_id = newEvent.parentId;
@@ -425,7 +430,8 @@ function App() {
                     buildingDescription: mappedEvent.building_description,
                     projectId: mappedEvent.project_id,
                     userId: mappedEvent.user_id,
-                    parentId: mappedEvent.parent_id
+                    parentId: mappedEvent.parent_id,
+                    lastDate: mappedEvent.last_date
                 };
 
                 // Optimistic Update for Insert
@@ -442,11 +448,13 @@ function App() {
                         buildingDescription: data[0].building_description,
                         projectId: data[0].project_id,
                         userId: data[0].user_id,
-                        parentId: data[0].parent_id
+                        parentId: data[0].parent_id,
+                        lastDate: data[0].last_date
                     };
                     setEvents(prev => prev.map(e => e.id === tempId ? savedEvent : e));
                 }
             }
+            handleRefresh();
         } catch (error) {
             console.error("Error in handleAddEvent:", error);
             showToast("Failed to save event: " + error.message);
@@ -517,6 +525,7 @@ function App() {
             if (updates.projectId) mappedUpdates.project_id = updates.projectId;
             if (updates.userId) mappedUpdates.user_id = updates.userId;
             if (updates.parentId) mappedUpdates.parent_id = updates.parentId;
+            if (updates.lastDate) mappedUpdates.last_date = updates.lastDate;
 
             // Cleanup camelCase
             delete mappedUpdates.toDate;
@@ -524,11 +533,13 @@ function App() {
             delete mappedUpdates.projectId;
             delete mappedUpdates.userId;
             delete mappedUpdates.parentId;
+            delete mappedUpdates.lastDate;
 
             const { error } = await supabase.from('events').update(mappedUpdates).eq('id', eventId);
             if (error) throw error;
             setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updates } : e));
             if (selectedEvent?.id === eventId) setSelectedEvent(prev => ({ ...prev, ...updates }));
+            handleRefresh();
         } catch (error) {
             console.error("Error updating event:", error);
         }
@@ -549,6 +560,7 @@ function App() {
 
             const { error } = await supabase.from('events').update({ completed: newCompleted }).eq('id', eventId);
             if (error) throw error;
+            handleRefresh();
         } catch (error) {
             console.error("Error toggling event:", error);
             showToast("Failed to update event status");
@@ -675,6 +687,7 @@ function App() {
                 console.error("Update sync error:", error.message);
                 showToast("Sync failed: " + error.message);
             }
+            handleRefresh();
         } catch (error) {
             console.error("Error updating task:", error);
         }
@@ -729,6 +742,7 @@ function App() {
 
             const { error } = await supabase.from('projects').update(mappedUpdates).eq('id', projectId);
             if (error) throw error;
+            handleRefresh();
         } catch (error) {
             console.error("Error updating project:", error);
         }
