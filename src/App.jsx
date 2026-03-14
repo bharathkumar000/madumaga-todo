@@ -665,6 +665,7 @@ function App() {
             if (updates.priority !== undefined) mappedUpdates.priority = updates.priority;
             if (updates.date !== undefined) mappedUpdates.date = updates.date;
             if (updates.time !== undefined) mappedUpdates.time = updates.time;
+            if (updates.duration !== undefined) mappedUpdates.duration = updates.duration;
 
             if (Object.keys(mappedUpdates).length === 0) return;
             const { error } = await supabase.from('tasks').update(mappedUpdates).eq('id', taskId);

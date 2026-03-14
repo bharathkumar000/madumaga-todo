@@ -173,21 +173,21 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                         {/* Core Info Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 flex-shrink-0">
                                     <MapPin size={20} />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Location</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">Location</p>
                                     <p className="text-sm font-bold text-white uppercase tracking-tight truncate">{event.location}</p>
                                 </div>
                             </div>
 
                             <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 flex-shrink-0">
                                     <Folder size={20} />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Linked Project</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">Linked Project</p>
                                     <p className="text-sm font-bold text-white uppercase tracking-tight truncate">
                                         {linkedProject ? linkedProject.name : 'No Project Linked'}
                                     </p>
@@ -196,11 +196,11 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
 
                             {event.lastDate && (
                                 <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                    <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400">
+                                    <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400 flex-shrink-0">
                                         <Bell size={20} />
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Last Date</p>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">Registration Last Date</p>
                                         <p className="text-sm font-bold text-white uppercase tracking-tight truncate">{event.lastDate}</p>
                                     </div>
                                 </div>
