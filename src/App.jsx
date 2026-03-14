@@ -166,7 +166,8 @@ function App() {
                     projectId: t.project_id,
                     userId: t.user_id,
                     assignedTo: t.assigned_to,
-                    rawDate: t.raw_date
+                    rawDate: t.raw_date,
+                    duration: t.duration
                 });
 
                 if (payload.eventType === 'INSERT') {
