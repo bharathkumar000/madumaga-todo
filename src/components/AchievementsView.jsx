@@ -2,45 +2,44 @@ import React from 'react';
 import { Trophy, Star, Target, Zap, Award, CheckCircle2 } from 'lucide-react';
 
 const AchievementsView = ({ projects = [], events = [] }) => {
-    const completedProjectsCount = projects.filter(p => p.status === 'Completed').length;
-    const hackathonWinsCount = events.filter(e => e.type === 'HACKATHON' && e.won).length;
-    const totalEventsCount = events.length;
+    const wonEventsCount = events.filter(e => e.won).length;
 
     const achievements = [
         {
             id: 1,
-            title: "Project Master",
-            description: `Fully completed ${completedProjectsCount} major projects. Keep shipping!`,
+            title: "First Victory",
+            description: `Secured your first event victory. The beginning of a legacy!`,
             icon: <Award className="text-blue-400" />,
-            progress: Math.min((completedProjectsCount / 3) * 100, 100),
-            earned: completedProjectsCount >= 3,
-            date: completedProjectsCount >= 3 ? "Achieved" : null
+            progress: Math.min((wonEventsCount / 1) * 100, 100),
+            earned: wonEventsCount >= 1,
+            date: wonEventsCount >= 1 ? "Achieved" : null
         },
         {
             id: 2,
             title: "Hackathon Champion",
-            description: `Won ${hackathonWinsCount} hackathons. The team is on fire!`,
+            description: `Won 3 events. The team is on fire!`,
             icon: <Trophy className="text-amber-400" />,
-            progress: Math.min((hackathonWinsCount / 1) * 100, 100),
-            earned: hackathonWinsCount >= 1,
-            date: hackathonWinsCount >= 1 ? "Achieved" : null
+            progress: Math.min((wonEventsCount / 3) * 100, 100),
+            earned: wonEventsCount >= 3,
+            date: wonEventsCount >= 3 ? "Achieved" : null
         },
         {
             id: 3,
             title: "Consistency King",
-            description: `Participated in ${totalEventsCount} community events.`,
+            description: `Secured 5 victories. Dominating the field regularly.`,
             icon: <Target className="text-emerald-400" />,
-            progress: Math.min((totalEventsCount / 5) * 100, 100),
-            earned: totalEventsCount >= 5,
-            date: totalEventsCount >= 5 ? "Achieved" : null
+            progress: Math.min((wonEventsCount / 5) * 100, 100),
+            earned: wonEventsCount >= 5,
+            date: wonEventsCount >= 5 ? "Achieved" : null
         },
         {
             id: 4,
             title: "Collab Legend",
-            description: "Contributed to multiple team projects.",
+            description: `Achieved 10 event wins. Absolute legends of the grid.`,
             icon: <Star className="text-purple-400" />,
-            progress: Math.min((projects.length / 5) * 100, 100),
-            earned: projects.length >= 5,
+            progress: Math.min((wonEventsCount / 10) * 100, 100),
+            earned: wonEventsCount >= 10,
+            date: wonEventsCount >= 10 ? "Achieved" : null
         }
     ];
 
@@ -49,7 +48,7 @@ const AchievementsView = ({ projects = [], events = [] }) => {
             <div className="mb-8">
                 <h1 className="text-3xl font-black text-white tracking-tight italic uppercase">Team Achievements</h1>
                 <p className="text-gray-500 font-medium mt-1 uppercase text-[10px] tracking-widest leading-loose">
-                    Celebrating real wins: Project completions and Hackathon victories.
+                    Celebrating real wins: Hackathon and Event Victories.
                 </p>
             </div>
 

@@ -428,9 +428,8 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                             const colors = {
                                 'HACKATHON': 'from-pink-500 to-rose-500 text-pink-500',
                                 'WORKSHOP': 'from-purple-500 to-pink-600 text-purple-500',
-                                'MEETUP': 'from-blue-400 to-cyan-500 text-blue-400',
-                                'CONFERENCE': 'from-amber-400 to-orange-500 text-amber-500',
-                                'COLLECTION': 'from-indigo-500 to-purple-600 text-indigo-400'
+                                'COLLECTION': 'from-indigo-500 to-purple-600 text-indigo-400',
+                                'ROBOTICS': 'from-[#22C7B5] to-[#22C7B5] text-[#22C7B5]'
                             };
                             return colors[t] || 'from-pink-500 to-blue-500 text-pink-400';
                         };
