@@ -205,7 +205,10 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                     className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group/type"
                                 >
                                     <Tag size={12} className="text-pink-500" />
-                                    <span className="text-[10px] font-black text-white uppercase tracking-wider">{type.toLowerCase()}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">TYPE:</span>
+                                        <span className="text-[10px] font-black text-white uppercase tracking-wider">{type.toLowerCase()}</span>
+                                    </div>
                                     <ChevronDown size={12} className={`text-gray-500 transition-transform ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
@@ -381,11 +384,11 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                 )}
                             </div>
 
-                            {/* Last Date Picker (Replaced Type Selector) */}
+                            {/* Registration Last Date Picker (Replaced Type Selector) */}
                             <div className="space-y-1 relative">
                                 <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
-                                    <CalendarIcon size={11} />
-                                    <span>Last Date</span>
+                                    <Bell size={11} className="text-pink-500" />
+                                    <span>Registration Last Date</span>
                                 </div>
                                 <button
                                     onClick={() => {
