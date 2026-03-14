@@ -286,7 +286,8 @@ function App() {
     }, [currentView]);
 
     const handleLogin = (user) => {
-        // Authenticated by listener
+        setCurrentUser(user);
+        setIsAuthenticated(true);
     };
 
     const handleLogout = async () => {
