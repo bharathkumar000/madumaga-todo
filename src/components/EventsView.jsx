@@ -107,7 +107,7 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                     {/* Left & Middle Column (Main Content) */}
                     <div className="space-y-8">
                         {/* Quick Info Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="p-4 rounded-[2rem] bg-[#16191D] border border-white/5 flex items-center gap-4 group">
                                 <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
                                     <MapPin size={20} />
@@ -128,8 +128,18 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                                     </p>
                                 </div>
                             </div>
+                            {activeCollection.lastDate && (
+                                <div className="p-4 rounded-[2rem] bg-[#16191D] border border-white/5 flex items-center gap-4 group">
+                                    <div className="p-3 rounded-2xl bg-pink-500/10 text-pink-400 group-hover:scale-110 transition-transform">
+                                        <Bell size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Last Date</p>
+                                        <p className="text-sm font-bold text-white uppercase tracking-tight">{activeCollection.lastDate}</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-
                         {/* Participating Teams Section */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
