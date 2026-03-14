@@ -426,12 +426,12 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                         const getTypeColor = (type) => {
                             const t = type?.toUpperCase();
                             const colors = {
-                                'HACKATHON': 'from-pink-500 to-rose-500 text-pink-500',
-                                'WORKSHOP': 'from-purple-500 to-pink-600 text-purple-500',
-                                'COLLECTION': 'from-indigo-500 to-purple-600 text-indigo-400',
-                                'ROBOTICS': 'from-[#22C7B5] to-[#22C7B5] text-[#22C7B5]'
+                                'HACKATHON': 'from-violet-600 to-fuchsia-600 text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-500/10',
+                                'WORKSHOP': 'from-amber-500 to-orange-600 text-amber-400 border-amber-500/30 bg-amber-500/10',
+                                'COLLECTION': 'from-emerald-500 to-teal-500 text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+                                'ROBOTICS': 'from-cyan-500 to-blue-600 text-cyan-400 border-cyan-500/30 bg-cyan-500/10'
                             };
-                            return colors[t] || 'from-pink-500 to-blue-500 text-pink-400';
+                            return colors[t] || 'from-zinc-500 to-zinc-700 text-zinc-300 border-zinc-500/30 bg-zinc-500/10';
                         };
 
                         return (
@@ -469,15 +469,20 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                                         {dayEvents.length > 0 ? (
                                             dayEvents.map(event => {
                                                 const colors = getTypeColor(event.type);
-                                                const textCol = colors.split(' ').pop();
+                                                const textCol = colors.split(' ').find(c => c.startsWith('text-')) || 'text-white';
                                                 const grad = colors.split(' ').slice(0, 2).join(' ');
+                                                const borderCol = colors.split(' ').find(c => c.startsWith('border-')) || 'border-white/10';
+                                                const bgCol = colors.split(' ').find(c => c.startsWith('bg-')) || 'bg-white/[0.04]';
 
                                                 return (
                                                     <div
                                                         key={event.id}
-                                                        className="flex items-center gap-2.5 bg-white/[0.04] border border-white/10 px-4 py-1.5 rounded-2xl shrink-0 h-[42px] shadow-lg shadow-black/40 min-w-[140px]"
+                                                        className={`flex items-center gap-2.5 ${bgCol} border ${borderCol} px-4 py-1.5 rounded-2xl shrink-0 h-[42px] shadow-lg shadow-black/40 min-w-[140px] relative overflow-hidden group`}
                                                     >
-                                                        <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${grad} animate-pulse shadow-[0_0_12px_rgba(79,70,229,0.5)]`}></div>
+                                                        {/* Subtle glowing orb inside */}
+                                                        <div className={`absolute -right-4 -top-4 w-12 h-12 rounded-full ${bgCol} blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500`}></div>
+
+                                                        <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${grad} animate-pulse relative z-10 shadow-[0_0_8px_currentColor]`}></div>
                                                         <div className="flex flex-col min-w-0">
                                                             <span className={`text-[10px] font-black ${textCol} truncate uppercase tracking-wider leading-tight`}>
                                                                 {event.title}
