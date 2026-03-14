@@ -197,10 +197,10 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                             {event.lastDate && (
                                 <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
                                     <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400">
-                                        <Calendar size={20} />
+                                        <Bell size={20} />
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Last Date</p>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Last Date</p>
                                         <p className="text-sm font-bold text-white uppercase tracking-tight truncate">{event.lastDate}</p>
                                     </div>
                                 </div>
