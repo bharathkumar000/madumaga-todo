@@ -418,7 +418,17 @@ function App() {
                 setEvents(prev => prev.map(e => e.id === eventToEdit.id ? { ...e, ...newEvent } : e));
 
                 const { error } = await supabase.from('events').update(mappedEvent).eq('id', eventToEdit.id);
-                if (error) throw error;
+                
+                if (error) {
+                    if (error.message?.includes('last_date')) {
+                        const fallbackUpdates = { ...mappedEvent };
+                        delete fallbackUpdates.last_date;
+                        const retry = await supabase.from('events').update(fallbackUpdates).eq('id', eventToEdit.id);
+                        if (retry.error) throw retry.error;
+                    } else {
+                        throw error;
+                    }
+                }
                 setEventToEdit(null);
             } else {
                 // Create a temporary ID for optimistic update
@@ -437,19 +447,37 @@ function App() {
                 // Optimistic Update for Insert
                 setEvents(prev => [...prev, optimisticEvent]);
 
-                const { data, error } = await supabase.from('events').insert([mappedEvent]).select();
-                if (error) throw error;
+                let query = supabase.from('events').insert([mappedEvent]).select();
+                const { data, error } = await query;
+                
+                if (error) {
+                    // Check if column exists, if not, retry without it
+                    if (error.message?.includes('last_date')) {
+                        console.warn("Retrying without last_date - column missing in DB");
+                        const fallbackEvent = { ...mappedEvent };
+                        delete fallbackEvent.last_date;
+                        const retry = await supabase.from('events').insert([fallbackEvent]).select();
+                        if (retry.error) throw retry.error;
+                        
+                        if (retry.data && retry.data[0]) {
+                            handleSuccessfulInsert(retry.data[0]);
+                        }
+                    } else {
+                        throw error;
+                    }
+                } else if (data && data[0]) {
+                    handleSuccessfulInsert(data[0]);
+                }
 
-                // Replace optimistic event with real one if needed, or let real-time handle it
-                if (data && data[0]) {
+                function handleSuccessfulInsert(dbEvent) {
                     const savedEvent = {
-                        ...data[0],
-                        toDate: data[0].to_date,
-                        buildingDescription: data[0].building_description,
-                        projectId: data[0].project_id,
-                        userId: data[0].user_id,
-                        parentId: data[0].parent_id,
-                        lastDate: data[0].last_date
+                        ...dbEvent,
+                        toDate: dbEvent.to_date,
+                        buildingDescription: dbEvent.building_description,
+                        projectId: dbEvent.project_id,
+                        userId: dbEvent.user_id,
+                        parentId: dbEvent.parent_id,
+                        lastDate: dbEvent.last_date
                     };
                     setEvents(prev => prev.map(e => e.id === tempId ? savedEvent : e));
                 }
@@ -457,8 +485,7 @@ function App() {
             handleRefresh();
         } catch (error) {
             console.error("Error in handleAddEvent:", error);
-            showToast("Failed to save event: " + error.message);
-            // Roll back on error if it was a new event (edit rollback is more complex)
+            showToast("Failed to save event: " + error.message, "error");
             if (!eventToEdit) {
                 setEvents(prev => prev.filter(e => !String(e.id).startsWith('temp-')));
             }
@@ -536,7 +563,17 @@ function App() {
             delete mappedUpdates.lastDate;
 
             const { error } = await supabase.from('events').update(mappedUpdates).eq('id', eventId);
-            if (error) throw error;
+            
+            if (error) {
+                if (error.message?.includes('last_date')) {
+                    const fallbackUpdates = { ...mappedUpdates };
+                    delete fallbackUpdates.last_date;
+                    const retry = await supabase.from('events').update(fallbackUpdates).eq('id', eventId);
+                    if (retry.error) throw retry.error;
+                } else {
+                    throw error;
+                }
+            }
             setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updates } : e));
             if (selectedEvent?.id === eventId) setSelectedEvent(prev => ({ ...prev, ...updates }));
             handleRefresh();
@@ -932,6 +969,7 @@ function App() {
                 onSave={handleAddEvent}
                 projects={projects}
                 eventToEdit={eventToEdit}
+                allEvents={events}
             />
             <EventDetailModal
                 event={selectedEvent}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, ExternalLink, Plus, ChevronLeft, Box, Sparkles, Link as LinkIcon, Compass, Pencil, X, Check, Trash2, Folder } from 'lucide-react';
+import { Calendar, MapPin, Users, ExternalLink, Plus, ChevronLeft, Box, Sparkles, Link as LinkIcon, Compass, Pencil, X, Check, Trash2, Folder, Bell } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal.jsx';
 
 const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], users = [], onEdit, onDelete, onToggleComplete, onUpdateEvent, onAddSubEvent, showToast, onGoToProject }) => {
     const [activeCollectionId, setActiveCollectionId] = useState(null);
     const [eventToDelete, setEventToDelete] = useState(null);
+    const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
 
     const activeCollection = events.find(e => e.id === activeCollectionId);
 
@@ -38,16 +39,25 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
         });
     };
 
-    const handleAddTeam = () => {
+    const handleSelectMember = (user) => {
         if (!activeCollection) return;
         const teams = activeCollection.teams || [];
-        const newTeam = {
+        
+        // Prevent duplicates
+        if (teams.some(t => t.name === user.name)) {
+            showToast?.(`${user.name} is already a member`, 'error');
+            return;
+        }
+
+        const newMember = {
             id: crypto.randomUUID(),
-            name: `New Member`,
-            role: 'Position',
+            name: user.name,
+            role: 'CORE MEMBER',
+            avatar: user.avatar,
             members: []
         };
-        onUpdateEvent(activeCollectionId, { teams: [...teams, newTeam] });
+        onUpdateEvent(activeCollectionId, { teams: [...teams, newMember] });
+        setIsMemberDropdownOpen(false);
     };
 
     const handleRemoveTeam = (teamId) => {
@@ -98,8 +108,41 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                                 <h1 className="text-4xl font-black text-white tracking-tight italic uppercase break-all">{activeCollection.title}</h1>
                                 <span className="text-2xl font-black text-white/20 tracking-tight italic uppercase hidden md:inline">— COLLECTION</span>
                             </div>
-                            <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[0.2em] leading-loose">Managing Archive and Collaborative Events</p>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em]">Managing archive and collaborative events</p>
                         </div>
+                    </div>
+
+                    {/* Action Buttons Top Right */}
+                    <div className="flex items-center gap-2 p-1.5 rounded-[2rem] bg-white/[0.03] border border-white/5 backdrop-blur-md">
+                        <button
+                            onClick={() => onToggleComplete(activeCollection.id)}
+                            title={activeCollection.completed ? "Mark Incomplete" : "Mark Complete"}
+                            className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 ${activeCollection.completed ? 'bg-emerald-500 text-white' : 'hover:bg-emerald-500/10 text-gray-400 hover:text-emerald-500'} group/action`}
+                        >
+                            <Check size={18} strokeWidth={3} className="group-hover/action:scale-110 transition-transform" />
+                        </button>
+                        <button
+                            onClick={() => onEdit(activeCollection)}
+                            title="Edit Event"
+                            className="w-11 h-11 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 transition-all active:scale-95 group/action"
+                        >
+                            <Pencil size={18} strokeWidth={2.5} className="group-hover/action:scale-110 transition-transform" />
+                        </button>
+                        <button
+                            onClick={() => onDelete(activeCollection.id)}
+                            title="Delete Event"
+                            className="w-11 h-11 rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-95 group/action"
+                        >
+                            <Trash2 size={18} strokeWidth={2.5} className="group-hover/action:scale-110 transition-transform" />
+                        </button>
+                        <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
+                        <button
+                            onClick={() => setActiveCollectionId(null)}
+                            title="Exit View"
+                            className="w-11 h-11 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all active:scale-95 group/action"
+                        >
+                            <X size={18} strokeWidth={2.5} className="group-hover/action:scale-110 transition-transform" />
+                        </button>
                     </div>
                 </div>
 
@@ -107,35 +150,35 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                     {/* Left & Middle Column (Main Content) */}
                     <div className="space-y-8">
                         {/* Quick Info Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="p-4 rounded-[2rem] bg-[#16191D] border border-white/5 flex items-center gap-4 group">
-                                <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                                    <MapPin size={20} />
+                        <div className="flex flex-wrap gap-6">
+                            <div className="p-6 rounded-[2.5rem] bg-[#16191D] border border-white/5 flex items-center gap-6 group hover:border-blue-500/20 transition-all min-w-[280px] flex-1">
+                                <div className="px-6 py-4 rounded-2xl bg-blue-500/10 text-blue-400 flex-shrink-0 group-hover:scale-105 transition-all flex items-center justify-center">
+                                    <MapPin size={24} />
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Location</p>
-                                    <p className="text-sm font-bold text-white uppercase tracking-tight">{activeCollection.location || 'Online'}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Location</p>
+                                    <p className="text-base font-black text-white uppercase tracking-tight whitespace-nowrap">{activeCollection.location || 'Online'}</p>
                                 </div>
                             </div>
-                            <div className="p-4 rounded-[2rem] bg-[#16191D] border border-white/5 flex items-center gap-4 group">
-                                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform">
-                                    <Folder size={20} />
+                            <div className="p-6 rounded-[2.5rem] bg-[#16191D] border border-white/5 flex items-center gap-6 group hover:border-indigo-500/20 transition-all min-w-[280px] flex-1">
+                                <div className="px-6 py-4 rounded-2xl bg-indigo-500/10 text-indigo-400 flex-shrink-0 group-hover:scale-105 transition-all flex items-center justify-center">
+                                    <Folder size={24} />
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Linked Project</p>
-                                    <p className="text-sm font-bold text-white uppercase tracking-tight truncate max-w-[150px]">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Linked Project</p>
+                                    <p className="text-base font-black text-white uppercase tracking-tight whitespace-nowrap">
                                         {linkedProject ? linkedProject.name : 'No Project Linked'}
                                     </p>
                                 </div>
                             </div>
                             {activeCollection.lastDate && (
-                                <div className="p-4 rounded-[2rem] bg-[#16191D] border border-white/5 flex items-center gap-4 group">
-                                    <div className="p-3 rounded-2xl bg-pink-500/10 text-pink-400 group-hover:scale-110 transition-transform">
-                                        <Bell size={20} />
+                                <div className="p-6 rounded-[2.5rem] bg-[#16191D] border border-white/5 flex items-center gap-6 group hover:border-pink-500/20 transition-all min-w-[280px] flex-1">
+                                    <div className="px-6 py-4 rounded-2xl bg-pink-500/10 text-pink-400 flex-shrink-0 group-hover:scale-105 transition-all flex items-center justify-center">
+                                        <Bell size={24} />
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Last Date</p>
-                                        <p className="text-sm font-bold text-white uppercase tracking-tight">{activeCollection.lastDate}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Deadline</p>
+                                        <p className="text-base font-black text-white uppercase tracking-tight whitespace-nowrap">{activeCollection.lastDate}</p>
                                     </div>
                                 </div>
                             )}
@@ -147,12 +190,44 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                                     <Users size={14} />
                                     <span>Participating Members</span>
                                 </div>
-                                <button
-                                    onClick={handleAddTeam}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold text-white uppercase tracking-wider"
-                                >
-                                    <Plus size={14} /> Add Member
-                                </button>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold text-white uppercase tracking-wider"
+                                    >
+                                        <Plus size={14} /> Add Member
+                                    </button>
+
+                                    {isMemberDropdownOpen && (
+                                        <div className="absolute top-full right-0 mt-2 w-56 bg-[#1A1D21] border border-white/10 rounded-2xl shadow-2xl z-[50] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="px-4 py-2 border-b border-white/5 mb-1">
+                                                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Select Team Member</p>
+                                            </div>
+                                            <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
+                                                {users.filter(u => !teams.some(t => t.name === u.name)).length === 0 ? (
+                                                    <div className="px-4 py-3 text-[10px] text-gray-500 italic">All users added</div>
+                                                ) : (
+                                                    users.filter(u => !teams.some(t => t.name === u.name)).map(user => (
+                                                        <button
+                                                            key={user.id}
+                                                            onClick={() => handleSelectMember(user)}
+                                                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors group/u"
+                                                        >
+                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-black text-white uppercase">
+                                                                {user.name.charAt(0)}
+                                                            </div>
+                                                            <div className="flex-1 text-left">
+                                                                <p className="text-[11px] font-black text-white uppercase tracking-wider group-hover/u:text-indigo-400 transition-colors">{user.name}</p>
+                                                                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest leading-none mt-0.5">{user.role || 'Member'}</p>
+                                                            </div>
+                                                            <ChevronRight size={10} className="text-gray-700 group-hover/u:translate-x-0.5 transition-transform" />
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {teams.length === 0 ? (
@@ -160,32 +235,16 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                                     <p className="text-gray-600 font-bold text-[10px] uppercase tracking-widest italic">No members added to this collection yet.</p>
                                 </div>
                             ) : (
-                                <div className="bg-[#16191D] border border-white/5 rounded-3xl overflow-hidden divide-y divide-white/[0.03]">
+                                <div className="flex flex-row flex-wrap items-center gap-2">
                                     {teams.map(team => (
-                                        <div key={team.id} className="p-4 flex items-center justify-between group hover:bg-white/[0.02] transition-colors">
-                                            <div className="flex items-center gap-4 sm:gap-8 flex-1">
-                                                <div className="flex-1">
-                                                    <InlineInput
-                                                        initialValue={team.name}
-                                                        onSave={(n) => handleUpdateTeam(team.id, { name: n })}
-                                                        placeholder="Name"
-                                                        className="bg-transparent text-white font-black text-sm uppercase tracking-wider focus:outline-none focus:border-b border-white/20 pb-0.5 w-full"
-                                                    />
-                                                </div>
-                                                <div className="flex-[1.5]">
-                                                    <InlineInput
-                                                        initialValue={team.role || ''}
-                                                        onSave={(r) => handleUpdateTeam(team.id, { role: r })}
-                                                        placeholder="Position / Role"
-                                                        className="bg-transparent text-indigo-400 font-black text-[10px] uppercase tracking-[0.2em] focus:outline-none focus:border-b border-indigo-500/30 pb-0.5 w-full"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => handleRemoveTeam(team.id)}
-                                                className="ml-4 p-2 rounded-xl hover:bg-rose-500/10 text-gray-600 hover:text-rose-500 transition-all sm:opacity-0 group-hover:opacity-100"
+                                        <div key={team.id} className="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full bg-[#1A1D21] border border-white/5 hover:border-indigo-500/30 transition-all">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                            <span className="text-[10px] font-black text-white uppercase tracking-widest pr-1">{team.name}</span>
+                                            <button 
+                                                onClick={() => handleRemoveTeam(team.id)} 
+                                                className="p-1 rounded-full text-gray-600 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
                                             >
-                                                <Trash2 size={16} />
+                                                <X size={10} />
                                             </button>
                                         </div>
                                     ))}
@@ -307,7 +366,7 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {(events || []).filter(e => !e.parentId).sort((a, b) => {
+                    {(events || []).filter(e => !e.parentId && !e.won).sort((a, b) => {
                         const dateA = a.date ? new Date(a.date) : new Date(0);
                         const dateB = b.date ? new Date(b.date) : new Date(0);
                         return dateA - dateB;

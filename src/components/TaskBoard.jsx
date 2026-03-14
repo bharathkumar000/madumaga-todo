@@ -1,9 +1,10 @@
 // src/components/TaskBoard.jsx
 import React, { useMemo } from 'react';
-import { MoreHorizontal, Calendar, Check, Trash2, Pencil, Copy, RotateCw } from 'lucide-react';
+import { MoreHorizontal, Calendar, Check, Trash2, Pencil, Copy, RotateCw, Trophy, MapPin, Box } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth, isAfter } from 'date-fns';
 
 // Sortable Task Card Component
 const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
@@ -84,7 +85,7 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
             style={style}
             {...listeners}
             {...attributes}
-            className={`bg-[#16191D] px-2 py-1.5 rounded-lg border border-white/5 cursor-grab active:cursor-grabbing shadow-2xl group touch-none relative overflow-hidden w-full ${task.completed ? 'opacity-50 grayscale-[0.5]' : 'hover:border-white/20 hover:shadow-[0_25px_60px_rgba(0,0,0,0.6)] hover:-translate-y-0.5 transition-all duration-300'}`}
+            className={`bg-[#16191D] px-2 py-1.5 rounded-lg border border-white/5 cursor-grab active:cursor-grabbing shadow-2xl group touch-none relative overflow-hidden w-full ${task.completed ? 'opacity-50 grayscale-[0.5]' : 'hover:border-white/20 hover:shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300'} ${isDragging ? 'shadow-[0_0_30px_rgba(0,0,0,0.8)] border-white/20 rotate-2 scale-105 z-50' : 'hover:-translate-y-0.5'}`}
         >
             {/* Ambient Glows - Sync to task color */}
             <div
@@ -216,24 +217,88 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
     );
 });
 
+const BoardEvent = React.memo(({ event, projects = [] }) => {
+    const getTypeColor = (type) => {
+        const t = (type || '').toUpperCase();
+        const colors = {
+            'HACKATHON': 'from-violet-600 to-fuchsia-600 text-fuchsia-400 border-fuchsia-500/20 bg-fuchsia-500/10',
+            'WORKSHOP': 'from-amber-500 to-orange-600 text-amber-400 border-amber-500/20 bg-amber-500/10',
+            'COLLECTION': 'from-emerald-500 to-teal-500 text-emerald-400 border-emerald-500/20 bg-emerald-500/10',
+            'ROBOTICS': 'from-cyan-500 to-blue-600 text-cyan-400 border-cyan-500/20 bg-cyan-500/10'
+        };
+        return colors[t] || 'from-zinc-500 to-zinc-700 text-zinc-300 border-zinc-500/20 bg-zinc-500/10';
+    };
+
+    const colors = getTypeColor(event.type);
+    const textCol = colors.split(' ').find(c => c.startsWith('text-')) || 'text-white';
+    const grad = colors.split(' ').slice(0, 2).join(' ');
+    const bgCol = colors.split(' ').find(c => c.startsWith('bg-')) || 'bg-white/[0.04]';
+    const borderCol = colors.split(' ').find(c => c.startsWith('border-')) || 'border-white/10';
+
+    const project = projects.find(p => p.id === event.projectId);
+
+    return (
+        <div className={`relative px-4 py-3 rounded-xl border ${borderCol} ${bgCol} shadow-xl group overflow-hidden transition-all hover:scale-[1.02] hover:shadow-2xl`}>
+            {/* Subtle glow */}
+            <div className={`absolute -right-4 -top-4 w-12 h-12 rounded-full ${bgCol} blur-xl opacity-40 group-hover:opacity-100 transition-opacity`}></div>
+
+            <div className="relative z-10 flex flex-col gap-2">
+                <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${grad} animate-pulse shadow-[0_0_8px_currentColor]`}></div>
+                            <span className={`text-[9px] font-black ${textCol} uppercase tracking-widest`}>{event.type}</span>
+                        </div>
+                        <h3 className="text-sm font-black text-white leading-tight uppercase tracking-tight truncate group-hover:whitespace-normal">
+                            {event.title}
+                        </h3>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1 text-[8px] text-gray-500 font-bold uppercase tracking-widest">
+                        <Calendar size={10} />
+                        <span>{event.date}</span>
+                    </div>
+                    {event.location && (
+                        <div className="flex items-center gap-1 text-[8px] text-gray-500 font-bold uppercase tracking-widest">
+                            <MapPin size={10} />
+                            <span className="truncate max-w-[80px]">{event.location}</span>
+                        </div>
+                    )}
+                </div>
+
+                {project && (
+                    <div className="flex items-center gap-1.5 mt-1 pt-2 border-t border-white/5">
+                        <Box size={10} className="text-gray-600" />
+                        <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest truncate">{project.name}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
+
 // Sortable Column Component
-const Column = React.memo(({ id, title, count, color, tasks = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
+const Column = React.memo(({ id, title, count, color, tasks = [], events = [], projects = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
     const { setNodeRef } = useDroppable({
         id: id,
         data: { type: 'Column', id }
     });
 
+    const totalCount = tasks.length + events.length;
+
     return (
-        <div className="flex-1 min-w-[240px] max-w-[300px] flex flex-col h-full border-r border-[#1E2025] last:border-r-0 bg-[#0B0D10]">
+        <div className="flex-1 min-w-[280px] max-w-[320px] flex flex-col h-full border-r border-[#1E2025] last:border-r-0 bg-[#0B0D10]">
             {/* Column Header */}
-            <div className={`p-3 flex items-center justify-between border-t-2 ${color} bg-[#16191D] border-b border-white/[0.03]`}>
+            <div className={`p-4 flex items-center justify-between border-t-2 ${color} bg-[#16191D] border-b border-white/[0.03]`}>
                 <div className="flex items-center gap-3">
                     <h3 className="font-black text-gray-200 text-[10px] tracking-[0.2em] uppercase italic">
                         {title}
                     </h3>
                 </div>
                 <span className="text-[10px] font-black bg-white/5 text-gray-400 px-2 py-0.5 rounded-lg border border-white/5">
-                    {tasks.length}
+                    {totalCount}
                 </span>
             </div>
 
@@ -242,28 +307,81 @@ const Column = React.memo(({ id, title, count, color, tasks = [], onToggleTask, 
                 ref={setNodeRef}
                 className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4 bg-gradient-to-b from-[#0F1115] to-[#0B0D10]"
             >
+                {/* Events Section */}
+                {events.length > 0 && (
+                    <div className="space-y-3 pb-2">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="h-[1px] flex-1 bg-white/5"></div>
+                            <span className="text-[8px] font-black text-gray-600 uppercase tracking-[0.3em]">Live Events</span>
+                            <div className="h-[1px] flex-1 bg-white/5"></div>
+                        </div>
+                        {events.map(event => (
+                            <BoardEvent key={event.id} event={event} projects={projects} />
+                        ))}
+                    </div>
+                )}
+
+                {/* Tasks Section */}
                 <SortableContext items={tasks.map(t => `board-${t.id}`)} strategy={verticalListSortingStrategy}>
-                    {tasks.map((task) => (
-                        <BoardTask
-                            key={task.id}
-                            task={task}
-                            onToggleTask={onToggleTask}
-                            onDeleteTask={onDeleteTask}
-                            onDuplicateTask={onDuplicateTask}
-                            onEditTask={onEditTask}
-                            allUsers={allUsers}
-                            currentUser={currentUser}
-                        />
-                    ))}
+                    <div className="space-y-4">
+                        {tasks.map((task) => (
+                            <BoardTask
+                                key={task.id}
+                                task={task}
+                                onToggleTask={onToggleTask}
+                                onDeleteTask={onDeleteTask}
+                                onDuplicateTask={onDuplicateTask}
+                                onEditTask={onEditTask}
+                                allUsers={allUsers}
+                                currentUser={currentUser}
+                            />
+                        ))}
+                    </div>
                 </SortableContext>
             </div>
         </div>
     );
 });
 
-const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
+const TaskBoard = ({ tasks, events = [], projects = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
     const selectedMember = allUsers.find(u => u.id === selectedMemberId);
-    const getTasksByStatus = (status) => tasks.filter(t => t.status === status);
+    
+    // Categorization logic for both tasks and events
+    const today = startOfDay(new Date());
+    
+    const getItemsByCategory = (category) => {
+        const filteredTasks = tasks.filter(t => t.status === category);
+        
+        const filteredEvents = events.filter(e => {
+            if (e.won || e.completed) return false;
+            const eventDate = startOfDay(new Date(e.date));
+            if (isNaN(eventDate.getTime())) return false;
+
+            if (category === 'DELAYED') {
+                return isBefore(eventDate, today);
+            } else if (category === 'TODAY') {
+                return isSameDay(eventDate, today);
+            } else if (category === 'THIS_WEEK') {
+                return isAfter(eventDate, today) && isBefore(eventDate, endOfWeek(today));
+            } else if (category === 'THIS_MONTH') {
+                return isAfter(eventDate, endOfWeek(today)) && isBefore(eventDate, endOfMonth(today));
+            } else if (category === 'UPCOMING') {
+                return isAfter(eventDate, endOfMonth(today));
+            }
+            return false;
+        });
+
+        return { tasks: filteredTasks, events: filteredEvents };
+    };
+
+    const categories = [
+        { id: 'DELAYED', title: 'Delayed', color: 'border-t-orange-500' },
+        { id: 'TODAY', title: 'Today', color: 'border-t-pink-500' },
+        { id: 'THIS_WEEK', title: 'This week', color: 'border-t-blue-500' },
+        { id: 'THIS_MONTH', title: 'This month', color: 'border-t-indigo-500' },
+        { id: 'UPCOMING', title: 'Upcoming', color: 'border-t-yellow-500' },
+        { id: 'waiting', title: 'Waiting List', color: 'border-t-gray-500' }
+    ];
 
     return (
         <div className="flex flex-col h-full bg-[#0B0D10] text-white">
@@ -287,12 +405,26 @@ const TaskBoard = ({ tasks, onToggleTask, onDeleteTask, onDuplicateTask, onEditT
             </div>
 
             <div className="flex-1 flex overflow-x-auto overflow-y-hidden">
-                <Column id="DELAYED" title="Delayed" color="border-t-orange-500" tasks={getTasksByStatus('DELAYED')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
-                <Column id="TODAY" title="Today" color="border-t-pink-500" tasks={getTasksByStatus('TODAY')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
-                <Column id="THIS_WEEK" title="This week" color="border-t-blue-500" tasks={getTasksByStatus('THIS_WEEK')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
-                <Column id="THIS_MONTH" title="This month" color="border-t-orange-300" tasks={getTasksByStatus('THIS_MONTH')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
-                <Column id="UPCOMING" title="Upcoming" color="border-t-yellow-500" tasks={getTasksByStatus('UPCOMING')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
-                <Column id="waiting" title="Waiting List" color="border-t-gray-500" tasks={getTasksByStatus('waiting')} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} onEditTask={onEditTask} onDuplicateTask={onDuplicateTask} allUsers={allUsers} currentUser={currentUser} />
+                {categories.map(cat => {
+                    const { tasks: catTasks, events: catEvents } = getItemsByCategory(cat.id);
+                    return (
+                        <Column 
+                            key={cat.id} 
+                            id={cat.id} 
+                            title={cat.title} 
+                            color={cat.color} 
+                            tasks={catTasks} 
+                            events={catEvents}
+                            projects={projects}
+                            onToggleTask={onToggleTask} 
+                            onDeleteTask={onDeleteTask} 
+                            onEditTask={onEditTask} 
+                            onDuplicateTask={onDuplicateTask} 
+                            allUsers={allUsers} 
+                            currentUser={currentUser} 
+                        />
+                    );
+                })}
             </div>
         </div>
     );
