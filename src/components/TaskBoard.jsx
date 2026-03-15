@@ -217,7 +217,7 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
     );
 });
 
-const BoardEvent = React.memo(({ event, projects = [] }) => {
+const BoardEvent = React.memo(({ event, projects = [], onEventClick }) => {
     const getTypeColor = (type) => {
         const t = (type || '').toUpperCase();
         const colors = {
@@ -238,7 +238,10 @@ const BoardEvent = React.memo(({ event, projects = [] }) => {
     const project = projects.find(p => p.id === event.projectId);
 
     return (
-        <div className={`relative px-4 py-3 rounded-xl border ${borderCol} ${bgCol} shadow-xl group overflow-hidden transition-all hover:scale-[1.02] hover:shadow-2xl`}>
+        <div 
+            onClick={() => onEventClick && onEventClick(event)}
+            className={`relative px-4 py-3 rounded-xl border ${borderCol} ${bgCol} shadow-xl group overflow-hidden transition-all hover:scale-[1.02] hover:shadow-2xl cursor-pointer active:scale-95`}
+        >
             {/* Subtle glow */}
             <div className={`absolute -right-4 -top-4 w-12 h-12 rounded-full ${bgCol} blur-xl opacity-40 group-hover:opacity-100 transition-opacity`}></div>
 
@@ -280,7 +283,7 @@ const BoardEvent = React.memo(({ event, projects = [] }) => {
 });
 
 // Sortable Column Component
-const Column = React.memo(({ id, title, count, color, tasks = [], events = [], projects = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
+const Column = React.memo(({ id, title, count, color, tasks = [], events = [], projects = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, onEventClick, allUsers = [], currentUser }) => {
     const { setNodeRef } = useDroppable({
         id: id,
         data: { type: 'Column', id }
@@ -316,7 +319,7 @@ const Column = React.memo(({ id, title, count, color, tasks = [], events = [], p
                             <div className="h-[1px] flex-1 bg-white/5"></div>
                         </div>
                         {events.map(event => (
-                            <BoardEvent key={event.id} event={event} projects={projects} />
+                            <BoardEvent key={event.id} event={event} projects={projects} onEventClick={onEventClick} />
                         ))}
                     </div>
                 )}
@@ -343,7 +346,7 @@ const Column = React.memo(({ id, title, count, color, tasks = [], events = [], p
     );
 });
 
-const TaskBoard = ({ tasks, events = [], projects = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
+const TaskBoard = ({ tasks, events = [], projects = [], onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, onEventClick, selectedMemberId, onClearMemberFilter, allUsers = [], currentUser }) => {
     const selectedMember = allUsers.find(u => u.id === selectedMemberId);
     
     // Categorization logic for both tasks and events
@@ -353,7 +356,7 @@ const TaskBoard = ({ tasks, events = [], projects = [], onToggleTask, onDeleteTa
         const filteredTasks = tasks.filter(t => t.status === category);
         
         const filteredEvents = events.filter(e => {
-            if (e.won || e.completed) return false;
+            if (e.won || e.completed || e.parentId) return false;
             const eventDate = startOfDay(new Date(e.date));
             if (isNaN(eventDate.getTime())) return false;
 
@@ -404,25 +407,30 @@ const TaskBoard = ({ tasks, events = [], projects = [], onToggleTask, onDeleteTa
                 )}
             </div>
 
-            <div className="flex-1 flex overflow-x-auto overflow-y-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-y-hidden lg:overflow-x-auto p-4 lg:p-0">
                 {categories.map(cat => {
                     const { tasks: catTasks, events: catEvents } = getItemsByCategory(cat.id);
+                    // Skip empty columns on mobile to keep it tight, except Today/Waiting
+                    if (window.innerWidth < 1024 && catTasks.length === 0 && catEvents.length === 0 && cat.id !== 'TODAY' && cat.id !== 'waiting') return null;
+
                     return (
-                        <Column 
-                            key={cat.id} 
-                            id={cat.id} 
-                            title={cat.title} 
-                            color={cat.color} 
-                            tasks={catTasks} 
-                            events={catEvents}
-                            projects={projects}
-                            onToggleTask={onToggleTask} 
-                            onDeleteTask={onDeleteTask} 
-                            onEditTask={onEditTask} 
-                            onDuplicateTask={onDuplicateTask} 
-                            allUsers={allUsers} 
-                            currentUser={currentUser} 
-                        />
+                        <div key={cat.id} className="w-full lg:w-[320px] lg:flex-shrink-0">
+                            <Column 
+                                id={cat.id} 
+                                title={cat.title} 
+                                color={cat.color} 
+                                tasks={catTasks} 
+                                events={catEvents}
+                                projects={projects}
+                                onToggleTask={onToggleTask} 
+                                onDeleteTask={onDeleteTask} 
+                                onEditTask={onEditTask} 
+                                onDuplicateTask={onDuplicateTask} 
+                                onEventClick={onEventClick}
+                                allUsers={allUsers} 
+                                currentUser={currentUser} 
+                            />
+                        </div>
                     );
                 })}
             </div>
