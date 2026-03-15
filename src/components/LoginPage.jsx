@@ -15,6 +15,8 @@ const LoginPage = ({ onLogin, users }) => {
         setIsLoading(true);
 
         try {
+            // Removed Guest Login Bypass - Sathwik is now a real account
+
             // Use entered ID directly if it's an email, otherwise map to virtual domain
             const email = userId.includes('@') ? userId : `${userId.toLowerCase()}@madumaga.com`;
 

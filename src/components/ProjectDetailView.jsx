@@ -12,6 +12,7 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
     const [isDragging, setIsDragging] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [fileToDelete, setFileToDelete] = useState(null);
+    const [selectedFileId, setSelectedFileId] = useState(null);
     const fileInputRef = useRef(null);
 
     if (!project) return null;
@@ -62,9 +63,9 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
     const completionRate = projectTasks.length > 0 ? Math.round((finishedTasks.length / projectTasks.length) * 100) : 0;
 
     return (
-        <div className="flex flex-col h-full bg-[#0B0D10] text-white select-none overflow-hidden font-sans">
+        <div className="flex flex-col h-full bg-[#0B0D10] text-white select-none overflow-y-auto lg:overflow-hidden font-sans custom-scrollbar">
             {/* Header */}
-            <header className="px-8 py-6 flex items-center justify-between border-b border-white/[0.03]">
+            <header className="px-4 lg:px-8 py-6 flex items-center justify-between border-b border-white/[0.03]">
                 <button
                     onClick={onBack}
                     className="flex items-center gap-3 text-gray-400 hover:text-white transition-all font-bold group"
@@ -354,49 +355,84 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                             </div>
 
                             {/* Files Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                                {currentProjectFiles.map(file => (
-                                    <div
-                                        key={file.id}
-                                        className="bg-[#111418] p-4 rounded-2xl border border-white/[0.02] hover:border-white/10 transition-all group relative flex items-center gap-4"
-                                    >
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setFileToDelete(file);
-                                            }}
-                                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-10 border border-white/5"
-                                        >
-                                            <X size={14} strokeWidth={3} />
-                                        </button>
-
+                             <div className="flex flex-wrap gap-8 pt-4">
+                                {currentProjectFiles.map(file => {
+                                    const isSelected = selectedFileId === file.id;
+                                    const isImage = file.file_type?.startsWith('image/');
+                                    
+                                    return (
                                         <div
-                                            onClick={() => {
-                                                if (file.file_url) {
-                                                    window.open(file.file_url, '_blank');
-                                                } else if (file.content) {
-                                                    setViewingAsset(file);
-                                                }
-                                            }}
-                                            className="cursor-pointer flex items-center gap-4 flex-1 min-w-0"
+                                            key={file.id}
+                                            className="group relative flex flex-col items-center w-32 gap-3"
+                                            onClick={() => setSelectedFileId(file.id)}
                                         >
-                                            <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/5 flex-shrink-0 flex items-center justify-center text-white group-hover:bg-cyan-500 group-hover:text-black transition-all">
-                                                {file.file_url ? <Upload size={18} /> : <FileText size={18} />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-[13px] font-black text-gray-100 truncate uppercase italic tracking-tight mb-1">{file.file_name}</h3>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
-                                                        {file.file_url ? formatSize(file.file_size) : `${file.file_size} CHRS`}
-                                                    </span>
-                                                    <span className="text-[8px] font-black text-gray-700 uppercase tracking-widest">
-                                                        {file.file_url ? (file.file_type?.split('/')[1] || 'FILE') : 'TEXT'}
-                                                    </span>
+                                            {/* Delete Button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setFileToDelete(file);
+                                                }}
+                                                className="absolute -top-1 -right-1 p-1 rounded-full bg-rose-500 text-white shadow-lg opacity-0 group-hover:opacity-100 z-30 transition-all hover:scale-110"
+                                            >
+                                                <X size={10} strokeWidth={4} />
+                                            </button>
+
+                                            {/* Dog-ear File Icon / Thumbnail */}
+                                            <div 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isImage) {
+                                                        setViewingAsset(file);
+                                                    } else if (file.file_url) {
+                                                        window.open(file.file_url, '_blank');
+                                                    } else if (file.content) {
+                                                        setViewingAsset(file);
+                                                    }
+                                                    setSelectedFileId(file.id);
+                                                }}
+                                                className={`relative w-28 h-32 rounded-2xl bg-[#1C1F26] border border-white/10 overflow-hidden cursor-pointer transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex items-center justify-center p-2
+                                                    ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+                                            >
+                                                {/* Dog-ear Folded Corner */}
+                                                <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none z-20">
+                                                    <div className="absolute top-0 right-0 w-full h-full bg-white opacity-80" style={{ clipPath: 'polygon(0 0, 100% 100%, 0 100%)' }}></div>
+                                                    <div className="absolute top-0 right-0 w-full h-full bg-black/20" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }}></div>
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="w-full h-full flex flex-col items-center justify-center relative">
+                                                    {isImage ? (
+                                                        <img src={file.file_url} alt="" className="w-full h-full object-cover rounded-xl shadow-inner" />
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 group-hover:text-blue-400 transition-colors">
+                                                                <FileText size={28} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* File Type Indicator - Subtitle-like */}
+                                                    <div className="absolute bottom-2 right-2">
+                                                        <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest bg-black/40 px-1.5 py-0.5 rounded-sm backdrop-blur-sm">
+                                                            {file.file_url ? (file.file_type?.split('/')[1] || 'FILE') : 'TEXT'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            {/* Filename with selection highlight */}
+                                            <div className="w-full px-1 text-center">
+                                                <h3 className={`text-[11px] font-bold truncate transition-all px-2 py-1 rounded inline-block max-w-full italic
+                                                    ${isSelected 
+                                                        ? 'bg-blue-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.4)]' 
+                                                        : 'text-gray-400 group-hover:text-gray-200'}`}
+                                                >
+                                                    {file.file_name}
+                                                </h3>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {currentProjectFiles.length === 0 && (
                                     <div className="col-span-full h-80 border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center justify-center grayscale opacity-30">
                                         <FileText size={60} className="text-gray-500 mb-6" />
@@ -486,22 +522,48 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                                 <X size={24} />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                            <pre className="text-gray-300 font-mono text-sm leading-relaxed whitespace-pre-wrap selection:bg-cyan-500 selection:text-black">
-                                {viewingAsset.content}
-                            </pre>
+                        <div className="flex-1 overflow-auto p-4 md:p-10 custom-scrollbar flex items-center justify-center bg-black/20">
+                            {viewingAsset.file_type?.startsWith('image/') ? (
+                                <img 
+                                    src={viewingAsset.file_url} 
+                                    alt={viewingAsset.file_name} 
+                                    className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in fade-in zoom-in duration-300"
+                                />
+                            ) : (
+                                <pre className="w-full text-gray-300 font-mono text-sm leading-relaxed whitespace-pre-wrap selection:bg-cyan-500 selection:text-black">
+                                    {viewingAsset.content}
+                                </pre>
+                            )}
                         </div>
-                        <div className="p-6 border-t border-white/5 bg-white/[0.01] flex justify-end">
-                            <button
-                                onClick={() => {
-                                    navigator.clipboard.writeText(viewingAsset.content);
-                                    // Could add a toast here if showToast was passed as prop
-                                }}
-                                className="px-8 py-3 bg-cyan-500 text-black rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-cyan-400 transition-all flex items-center gap-2"
-                            >
-                                <FileText size={16} strokeWidth={3} />
-                                Copy to Clipboard
-                            </button>
+                        <div className="p-6 border-t border-white/5 bg-white/[0.01] flex justify-end gap-4">
+                            {viewingAsset.file_url && (
+                                <a
+                                    href={viewingAsset.file_url}
+                                    download={viewingAsset.file_name}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                                >
+                                    <Upload size={16} className="rotate-180" />
+                                    Download Original
+                                </a>
+                            )}
+                            {(viewingAsset.content || viewingAsset.file_type?.startsWith('image/')) && (
+                                <button
+                                    onClick={() => {
+                                        if (viewingAsset.content) {
+                                            navigator.clipboard.writeText(viewingAsset.content);
+                                        } else {
+                                            // For images, we can copy the URL or just show a message
+                                            navigator.clipboard.writeText(viewingAsset.file_url);
+                                        }
+                                    }}
+                                    className="px-8 py-3 bg-cyan-500 text-black rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-cyan-400 transition-all flex items-center gap-2"
+                                >
+                                    <FileText size={16} strokeWidth={3} />
+                                    {viewingAsset.content ? 'Copy to Clipboard' : 'Copy Link'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
