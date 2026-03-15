@@ -59,7 +59,7 @@ const waitingFirstCollision = (args) => {
     return closestCorners(args);
 };
 
-const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onUpdateTask, onDeleteProject, onUpdateProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser, projectFiles, onUploadFile, onAddTextAsset, onDeleteFile, selectedProjectId, setSelectedProjectId }) => {
+const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, setProjects, onAddProject, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, events, onEventClick, onUpdateTask, onDeleteProject, onUpdateProject, selectedMemberId, onClearMemberFilter, allUsers, currentUser, projectFiles, onUploadFile, onAddTextAsset, onDeleteFile, selectedProjectId, setSelectedProjectId }) => {
     const [activeTask, setActiveTask] = useState(null);
     const [activeProject, setActiveProject] = useState(null);
 
@@ -174,8 +174,10 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
         // Task Reordering / Status Change while dragging (for visual feedback)
         if (isActiveTask && isOverTask) {
-            // Only reorder if not in calendar view tasks
-            if (currentView === 'calendar' && (String(activeId).startsWith('calendar-') || String(overId).startsWith('calendar-'))) return;
+            const isDraggingToWaiting = String(overId).startsWith('waiting-');
+            
+            // Only reorder if not in calendar view tasks, EXCEPT when dropping into the waiting list
+            if (currentView === 'calendar' && !isDraggingToWaiting && (String(activeId).startsWith('calendar-') || String(overId).startsWith('calendar-'))) return;
 
             setTasks((prev) => {
                 const oldIndex = prev.findIndex((t) => String(t.id) === String(realActiveId));
@@ -187,7 +189,13 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
 
                     if (activeTask.status !== overTask.status) {
                         const newTasks = [...prev];
-                        newTasks[oldIndex] = { ...activeTask, status: overTask.status };
+                        const taskUpdates = { ...activeTask, status: overTask.status };
+                        if (overTask.status === 'waiting' || overTask.status === 'NO_DUE_DATE') {
+                            taskUpdates.date = '';
+                            taskUpdates.time = '';
+                            taskUpdates.rawDate = '';
+                        }
+                        newTasks[oldIndex] = taskUpdates;
                         return arrayMove(newTasks, oldIndex, newIndex);
                     }
 
@@ -207,7 +215,13 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     const activeIndex = prev.findIndex((t) => String(t.id) === String(realActiveId));
                     if (activeIndex !== -1 && prev[activeIndex].status !== targetStatus) {
                         const newTasks = [...prev];
-                        newTasks[activeIndex] = { ...prev[activeIndex], status: targetStatus };
+                        const taskUpdates = { ...prev[activeIndex], status: targetStatus };
+                        if (targetStatus === 'waiting' || targetStatus === 'NO_DUE_DATE') {
+                            taskUpdates.date = '';
+                            taskUpdates.time = '';
+                            taskUpdates.rawDate = '';
+                        }
+                        newTasks[activeIndex] = taskUpdates;
                         return newTasks;
                     }
                     return prev;
@@ -288,6 +302,10 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     newStatus = 'UPCOMING';
                 }
 
+                const realActiveId = getRealId(active.id);
+                // Ensure we pass along the existing duration and priority
+                const activeTask = tasks.find(t => String(t.id) === String(realActiveId));
+
                 const updates = {
                     status: newStatus,
                     date: taskDateString,
@@ -295,7 +313,10 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     rawDate: newDateTime.toISOString()
                 };
 
-                const realActiveId = getRealId(active.id);
+                // Explicitly persist duration so that swapping calendar slots doesn't default it down to 60 due to a merge overriding issue
+                if (activeTask?.duration) {
+                    updates.duration = activeTask.duration;
+                }
 
                 // Optimistic: update UI instantly
                 setTasks(prev => prev.map(t =>
@@ -452,10 +473,12 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     ) : (
                         <MemoizedTaskBoard
                             tasks={filteredTasks}
+                            events={events}
                             onToggleTask={onToggleTask}
                             onDeleteTask={onDeleteTask}
                             onDuplicateTask={onDuplicateTask}
                             onEditTask={onEditTask}
+                            onEventClick={onEventClick}
                             selectedMemberId={selectedMemberId}
                             onClearMemberFilter={onClearMemberFilter}
                             allUsers={allUsers}
@@ -464,11 +487,11 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                     )}
                 </div>
 
-                {/* Right Sidebar: Waiting List - Hidden in tasks view */}
-                {currentView !== 'tasks' && (
+                {/* Right Sidebar: Waiting List - Hidden in tasks/projects view AND on mobile */}
+                {currentView !== 'tasks' && currentView !== 'projects' && (
                     <aside
                         ref={sidebarRef}
-                        className="flex-shrink-0 bg-gray-900 border-l border-gray-800 flex flex-col h-full bg-card/10 backdrop-blur-sm relative"
+                        className="hidden lg:flex flex-shrink-0 bg-gray-900 border-l border-gray-800 flex flex-col h-full bg-card/10 backdrop-blur-sm relative"
                         style={{ width: rightSidebarWidth, transition: isResizing ? 'none' : 'width 0.2s ease' }}
                     >
                         {/* Resize Handle */}

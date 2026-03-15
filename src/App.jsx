@@ -31,6 +31,7 @@ function App() {
     const [editingTask, setEditingTask] = useState(null);
     const [selectedMemberId, setSelectedMemberId] = useState(null);
     const [selectedProjectId, setSelectedProjectId] = useState(null);
+    const [activeCollectionId, setActiveCollectionId] = useState(null);
     const [toast, setToast] = useState(null);
 
     const showToast = useCallback((message, type = 'error') => {
@@ -95,10 +96,10 @@ function App() {
 
             const { data: usersData, error: usersError } = await supabase.from('users').select('*');
             if (usersError) throw usersError;
-            if (usersData) setAllUsers(usersData.map(u => ({
-                ...u,
-                avatar: u.avatar_url || u.avatar // Support both naming variants for data consistency
-            })));
+            if (usersData) {
+                const baseUsers = usersData.map(u => ({ ...u, avatar: u.avatar_url || u.avatar }));
+                setAllUsers(baseUsers);
+            }
 
             const { data: filesData, error: filesError } = await supabase.from('project_files').select('*');
             if (filesError) throw filesError;
@@ -150,7 +151,9 @@ function App() {
 
                 const { data: usersData, error: usersError } = await supabase.from('users').select('*');
                 if (usersError) throw usersError;
-                if (usersData) setAllUsers(usersData);
+                if (usersData) {
+                    setAllUsers(usersData.map(u => ({ ...u, avatar: u.avatar_url || u.avatar })));
+                }
             } catch (err) {
                 console.error("Critical Error Fetching Data:", err.message);
             }
@@ -302,6 +305,15 @@ function App() {
 
     const handleEventClick = (event) => {
         setSelectedEvent(event);
+    };
+
+    const handleDashboardEventClick = (event) => {
+        if (event.type === 'COLLECTION') {
+            setActiveCollectionId(event.id);
+            setCurrentView('events');
+        } else {
+            setSelectedEvent(event);
+        }
     };
 
     const handleEditEvent = (event) => {
@@ -798,7 +810,8 @@ function App() {
 
     const handleUploadFile = async (projectId, file) => {
         try {
-            const fileName = `${Date.now()}_${file.name}`;
+            const sanitizedName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+            const fileName = `${Date.now()}_${sanitizedName}`;
             const filePath = `project_${projectId}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
@@ -910,6 +923,8 @@ function App() {
         >
             {currentView === 'events' ? (
                 <EventsView
+                    activeCollectionId={activeCollectionId}
+                    setActiveCollectionId={setActiveCollectionId}
                     events={events}
                     projects={projects}
                     users={allUsers}
@@ -939,6 +954,7 @@ function App() {
                     projects={projects}
                     setProjects={setProjects}
                     events={events}
+                    onEventClick={handleDashboardEventClick}
                     onAddTask={(defaults = null) => { setNewTaskDefaults(defaults); setIsModalOpen(true); }}
                     onAddProject={() => setIsProjectModalOpen(true)}
                     onToggleTask={handleToggleTask}
