@@ -208,7 +208,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] backdrop-blur-[6px]">
             <div
-                className="w-[520px] rounded-3xl shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in duration-300 font-sans border border-white/10 relative group-modal"
+                className="w-full max-w-[520px] mx-4 rounded-3xl shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in duration-300 font-sans border border-white/10 relative group-modal"
                 style={{ backgroundColor: '#16191D' }}
             >
                 {/* Variant Ambient Glows */}
@@ -228,9 +228,9 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                     </div>
 
 
-                    <div className="max-h-[min(650px,80vh)] overflow-y-auto custom-scrollbar px-8 pb-6 pt-5 space-y-5">
+                    <div className="max-h-[min(680px,85vh)] overflow-y-auto custom-scrollbar px-5 lg:px-8 pb-6 pt-5 space-y-5">
                         {/* Title & Type Input Container */}
-                        <div className="flex items-end gap-x-4">
+                        <div className="flex flex-col lg:flex-row lg:items-end gap-y-4 lg:gap-x-4">
                             <div className="flex-1 relative">
                                 <input
                                     type="text"
@@ -312,7 +312,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                         </div>
 
                         {/* Meta Grid */}
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-4 bg-white/[0.02] p-5 rounded-2xl border border-white/5 font-bold relative z-20">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 bg-white/[0.02] p-5 rounded-2xl border border-white/5 font-bold relative z-20">
                             {/* Dates Header (Only if sub-event to separate from time) */}
                             {parentId && (
                                 <div className="col-span-2 flex items-center gap-2 mb-[-8px]">

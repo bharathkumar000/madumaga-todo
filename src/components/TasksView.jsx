@@ -66,7 +66,7 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
                     {filteredTasks.map((task) => {
                         const { rgba: taskColor, hex: glowColor, assignees } = getTaskColorData(task);
                         const currentTagStyle = tagStyles[task.tag] || tagStyles.default;
