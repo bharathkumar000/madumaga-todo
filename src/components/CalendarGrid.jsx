@@ -420,7 +420,7 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                         const isToday = isSameDay(day, new Date());
                         const dayEvents = events.filter(e => {
                             const eDate = new Date(e.date);
-                            return isSameDay(eDate, day);
+                            return isSameDay(eDate, day) && !e.parentId;
                         });
 
                         const getTypeColor = (type) => {
@@ -510,6 +510,7 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                                     {(() => {
                                         const dayTasks = tasks
                                             .filter(task => {
+                                                if (task.parentId) return false;
                                                 if (task.rawDate) return isSameDay(new Date(task.rawDate), day);
                                                 if (!task.date) return false;
                                                 const taskDate = new Date(task.date);
