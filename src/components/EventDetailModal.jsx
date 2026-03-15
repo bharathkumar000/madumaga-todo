@@ -182,41 +182,39 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                             </h2>
                         </div>
 
-                        {/* Core Info Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 flex-shrink-0">
+                        {/* Core Info Grid - Side by Side */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 group hover:bg-white/[0.06] transition-all hover:scale-[1.02]">
+                                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
                                     <MapPin size={20} />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">Location</p>
-                                    <p className="text-sm font-bold text-white uppercase tracking-tight truncate">{event.location}</p>
+                                <div className="text-center min-w-0 w-full">
+                                    <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] mb-0.5">LOC</p>
+                                    <p className="text-[11px] font-bold text-white uppercase truncate">{event.location || 'N/A'}</p>
                                 </div>
                             </div>
 
-                            <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 flex-shrink-0">
+                            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 group hover:bg-white/[0.06] transition-all hover:scale-[1.02]">
+                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
                                     <Folder size={20} />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">Linked Project</p>
-                                    <p className="text-sm font-bold text-white uppercase tracking-tight truncate">
-                                        {linkedProject ? linkedProject.name : 'No Project Linked'}
+                                <div className="text-center min-w-0 w-full">
+                                    <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] mb-0.5">FOLDER</p>
+                                    <p className="text-[11px] font-bold text-white uppercase truncate">
+                                        {linkedProject ? linkedProject.name : 'NONE'}
                                     </p>
                                 </div>
                             </div>
 
-                            {event.lastDate && (
-                                <div className="bg-white/5 border border-white/5 rounded-2xl py-2.5 px-4 flex items-center gap-4 group hover:bg-white/[0.08] transition-colors">
-                                    <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400 flex-shrink-0">
-                                        <Bell size={20} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">Registration Last Date</p>
-                                        <p className="text-sm font-bold text-white uppercase tracking-tight truncate">{event.lastDate}</p>
-                                    </div>
+                            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 group hover:bg-white/[0.06] transition-all hover:scale-[1.02]">
+                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                                    <Calendar size={20} />
                                 </div>
-                            )}
+                                <div className="text-center min-w-0 w-full">
+                                    <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] mb-0.5">DATES</p>
+                                    <p className="text-[11px] font-bold text-white uppercase truncate">{event.date}</p>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Building Objective Section */}
