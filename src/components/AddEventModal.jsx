@@ -1,6 +1,6 @@
 // src/components/AddEventModal.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Calendar as CalendarIcon, MapPin, AlignLeft, ChevronLeft, ChevronRight, Tag, Folder, Link as LinkIcon, Plus, Trash2, ChevronDown, Check, Trophy, Bell, Users, IndianRupee } from 'lucide-react';
+import { X, Calendar as CalendarIcon, MapPin, AlignLeft, ChevronLeft, ChevronRight, Tag, Folder, Link as LinkIcon, Plus, Trash2, ChevronDown, Check, Trophy, Bell, Users, IndianRupee, Clock } from 'lucide-react';
 
 const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = null, allEvents = [] }) => {
     const [title, setTitle] = useState('');
@@ -22,6 +22,10 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     const [isLastCalendarOpen, setIsLastCalendarOpen] = useState(false);
     const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
     const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+    const [fromTime, setFromTime] = useState('09:00 AM');
+    const [toTime, setToTime] = useState('06:00 PM');
+    const [isFromTimeOpen, setIsFromTimeOpen] = useState(false);
+    const [isToTimeOpen, setIsToTimeOpen] = useState(false);
     const [viewDate, setViewDate] = useState(new Date());
 
     const formatDateLocal = (date) => {
@@ -47,6 +51,8 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
         setLastDate(null);
         setTeam('');
         setPrice('');
+        setFromTime('09:00 AM');
+        setToTime('06:00 PM');
     };
 
     const parentEvent = parentId ? allEvents.find(e => String(e.id) === String(parentId)) : null;
@@ -55,26 +61,33 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
     useEffect(() => {
         if (eventToEdit) {
             setTitle(eventToEdit.title || '');
+            // Handle Parent and Inheritance
+            const pId = eventToEdit.parentId || null;
+            setParentId(pId);
+            const parent = pId ? allEvents.find(e => String(e.id) === String(pId)) : null;
+
+            // Date Inheritance logic
             if (eventToEdit.date) {
                 const d = new Date(eventToEdit.date);
                 if (!isNaN(d.getTime())) {
                     setFromDate(formatDateLocal(d));
                 }
+            } else if (parent && parent.date && !eventToEdit.id) {
+                const d = new Date(parent.date);
+                if (!isNaN(d.getTime())) setFromDate(formatDateLocal(d));
             }
+
             if (eventToEdit.toDate) {
                 const d = new Date(eventToEdit.toDate);
                 if (!isNaN(d.getTime())) {
                     setToDate(formatDateLocal(d));
                 }
+            } else if (parent && parent.toDate && !eventToEdit.id) {
+                const d = new Date(parent.toDate);
+                if (!isNaN(d.getTime())) setToDate(formatDateLocal(d));
             }
             setDescription(eventToEdit.description || '');
             setBuildingDescription(eventToEdit.buildingDescription || '');
-
-            // Handle Parent and Inheritance
-            const pId = eventToEdit.parentId || null;
-            setParentId(pId);
-
-            const parent = pId ? allEvents.find(e => String(e.id) === String(pId)) : null;
 
             if (parent && parent.location && !eventToEdit.id) {
                 setLocation(parent.location);
@@ -90,6 +103,8 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
 
             setTeam(eventToEdit.team || '');
             setPrice(eventToEdit.price || '');
+            setFromTime(eventToEdit.fromTime || '09:00 AM');
+            setToTime(eventToEdit.toTime || '06:00 PM');
 
             setLinks(eventToEdit.links?.length > 0 ? [...eventToEdit.links] : [{ label: '', url: '' }]);
             
@@ -172,7 +187,9 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
             parentId: parentId,
             lastDate: finalLastDate,
             team,
-            price
+            price,
+            fromTime,
+            toTime
         });
 
         resetForm();
@@ -211,7 +228,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                     </div>
 
 
-                    <div className="max-h-[min(650px,80vh)] overflow-y-auto custom-scrollbar px-8 pb-8 pt-6 space-y-6">
+                    <div className="max-h-[min(650px,80vh)] overflow-y-auto custom-scrollbar px-8 pb-6 pt-5 space-y-5">
                         {/* Title & Type Input Container */}
                         <div className="flex items-end gap-x-4">
                             <div className="flex-1 relative">
@@ -295,7 +312,16 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                         </div>
 
                         {/* Meta Grid */}
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-6 bg-white/[0.02] p-6 rounded-2xl border border-white/5 font-bold relative z-20">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-4 bg-white/[0.02] p-5 rounded-2xl border border-white/5 font-bold relative z-20">
+                            {/* Dates Header (Only if sub-event to separate from time) */}
+                            {parentId && (
+                                <div className="col-span-2 flex items-center gap-2 mb-[-8px]">
+                                    <div className="h-[1px] flex-1 bg-white/5"></div>
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em]">Dates</span>
+                                    <div className="h-[1px] flex-1 bg-white/5"></div>
+                                </div>
+                            )}
+
                             {/* From Date Picker */}
                             <div className="space-y-1 relative">
                                 <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
@@ -339,7 +365,14 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                                 return (
                                                     <button
                                                         key={i}
-                                                        onClick={() => { setFromDate(formatDateLocal(d.date)); setIsFromCalendarOpen(false); }}
+                                                        onClick={() => { 
+                                                            if (formatDateLocal(d.date) === fromDate) {
+                                                                setFromDate(formatDateLocal(new Date()));
+                                                            } else {
+                                                                setFromDate(formatDateLocal(d.date));
+                                                            }
+                                                            setIsFromCalendarOpen(false); 
+                                                        }}
                                                         className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
                                                     >
                                                         {d.day}
@@ -394,7 +427,14 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                                 return (
                                                     <button
                                                         key={i}
-                                                        onClick={() => { setToDate(formatDateLocal(d.date)); setIsToCalendarOpen(false); }}
+                                                        onClick={() => { 
+                                                            if (formatDateLocal(d.date) === toDate) {
+                                                                setToDate(formatDateLocal(new Date()));
+                                                            } else {
+                                                                setToDate(formatDateLocal(d.date));
+                                                            }
+                                                            setIsToCalendarOpen(false); 
+                                                        }}
                                                         className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
                                                     >
                                                         {d.day}
@@ -507,7 +547,14 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                                     return (
                                                         <button
                                                             key={i}
-                                                            onClick={() => { setLastDate(formatDateLocal(d.date)); setIsLastCalendarOpen(false); }}
+                                                            onClick={() => { 
+                                                                if (formatDateLocal(d.date) === lastDate) {
+                                                                    setLastDate(null);
+                                                                } else {
+                                                                    setLastDate(formatDateLocal(d.date));
+                                                                }
+                                                                setIsLastCalendarOpen(false); 
+                                                            }}
                                                             className={`text-[10px] h-8 rounded-lg flex items-center justify-center font-bold transition-all ${!d.current ? 'text-gray-700 pointer-events-none opacity-20' : 'text-gray-400 hover:bg-white/5 hover:text-white'} ${isSelected ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:bg-pink-400' : ''} ${isToday && !isSelected ? 'border border-pink-500/30' : ''}`}
                                                         >
                                                             {d.day}
@@ -518,6 +565,103 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                         </div>
                                     )}
                                 </div>
+                            )}
+
+                            {/* Time Selectors (Only for Sub Events) */}
+                            {parentId && (
+                                <>
+                                    <div className="col-span-2 flex items-center gap-2 mt-1 mb-[-8px]">
+                                        <div className="h-[1px] flex-1 bg-white/5"></div>
+                                        <span className="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em]">Timing</span>
+                                        <div className="h-[1px] flex-1 bg-white/5"></div>
+                                    </div>
+
+                                    {/* From Time Selector */}
+                                    <div className="space-y-1 relative">
+                                        <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
+                                            <Clock size={11} className="text-pink-500" />
+                                            <span>From Time</span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setIsFromTimeOpen(!isFromTimeOpen);
+                                                setIsToTimeOpen(false);
+                                                setIsFromCalendarOpen(false);
+                                                setIsToCalendarOpen(false);
+                                                setIsLastCalendarOpen(false);
+                                                setIsTypeDropdownOpen(false);
+                                                setIsProjectDropdownOpen(false);
+                                            }}
+                                            className="text-xs text-gray-300 cursor-pointer hover:text-white transition-colors block w-full text-left py-1 font-black"
+                                        >
+                                            {fromTime}
+                                        </button>
+
+                                        {isFromTimeOpen && (
+                                            <div className="absolute top-full left-0 mt-2 w-32 max-h-48 overflow-y-auto bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] py-1 custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
+                                                {Array.from({ length: 24 * 2 }).map((_, i) => {
+                                                    const h = Math.floor(i / 2);
+                                                    const m = (i % 2) * 30;
+                                                    const period = h < 12 ? 'AM' : 'PM';
+                                                    const displayH = h % 12 || 12;
+                                                    const time = `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+                                                    return (
+                                                        <button
+                                                            key={time}
+                                                            onClick={() => { setFromTime(time); setIsFromTimeOpen(false); }}
+                                                            className={`w-full px-4 py-2 text-left text-[10px] font-bold hover:bg-white/5 transition-colors ${fromTime === time ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
+                                                        >
+                                                            {time}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* To Time Selector */}
+                                    <div className="space-y-1 relative">
+                                        <div className="flex items-center gap-2 text-[9px] text-gray-500 uppercase tracking-widest">
+                                            <Clock size={11} className="text-pink-500" />
+                                            <span>To Time</span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setIsToTimeOpen(!isToTimeOpen);
+                                                setIsFromTimeOpen(false);
+                                                setIsFromCalendarOpen(false);
+                                                setIsToCalendarOpen(false);
+                                                setIsLastCalendarOpen(false);
+                                                setIsTypeDropdownOpen(false);
+                                                setIsProjectDropdownOpen(false);
+                                            }}
+                                            className="text-xs text-gray-300 cursor-pointer hover:text-white transition-colors block w-full text-left py-1 font-black"
+                                        >
+                                            {toTime}
+                                        </button>
+
+                                        {isToTimeOpen && (
+                                            <div className="absolute top-full right-0 mt-2 w-32 max-h-48 overflow-y-auto bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-[130] py-1 custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
+                                                {Array.from({ length: 24 * 2 }).map((_, i) => {
+                                                    const h = Math.floor(i / 2);
+                                                    const m = (i % 2) * 30;
+                                                    const period = h < 12 ? 'AM' : 'PM';
+                                                    const displayH = h % 12 || 12;
+                                                    const time = `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+                                                    return (
+                                                        <button
+                                                            key={time}
+                                                            onClick={() => { setToTime(time); setIsToTimeOpen(false); }}
+                                                            className={`w-full px-4 py-2 text-left text-[10px] font-bold hover:bg-white/5 transition-colors ${toTime === time ? 'text-pink-400 bg-pink-500/5' : 'text-gray-400'}`}
+                                                        >
+                                                            {time}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
                             )}
                         </div>
 
@@ -558,6 +702,55 @@ const AddEventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit = n
                                 rows={2}
                             />
                         </div>
+
+                        {/* Quick Links Section (Hidden for sub-events) */}
+                        {!parentId && (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+                                        <LinkIcon size={12} className="text-pink-500" />
+                                        <span>External Links</span>
+                                    </div>
+                                    <button
+                                        onClick={addLink}
+                                        className="p-1.5 rounded-lg bg-pink-500/10 text-pink-500 hover:bg-pink-500/20 transition-all active:scale-95"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    {links.map((link, index) => (
+                                        <div key={index} className="flex gap-3 items-center group/link">
+                                            <div className="flex-1 flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Label..."
+                                                    value={link.label}
+                                                    onChange={(e) => updateLink(index, 'label', e.target.value)}
+                                                    className="w-[120px] bg-white/[0.02] text-gray-300 placeholder-gray-700 focus:outline-none text-[10px] font-bold p-2.5 rounded-xl border border-white/5 focus:border-white/10 transition-colors"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="URL (https://...)"
+                                                    value={link.url}
+                                                    onChange={(e) => updateLink(index, 'url', e.target.value)}
+                                                    className="flex-1 bg-white/[0.02] text-gray-300 placeholder-gray-700 focus:outline-none text-[10px] font-bold p-2.5 rounded-xl border border-white/5 focus:border-white/10 transition-colors"
+                                                />
+                                            </div>
+                                            {links.length > 1 && (
+                                                <button
+                                                    onClick={() => removeLink(index)}
+                                                    className="p-2 rounded-xl bg-rose-500/5 text-rose-500/30 hover:text-rose-500 transition-all active:scale-90 opacity-0 group-hover/link:opacity-100"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
 
 
