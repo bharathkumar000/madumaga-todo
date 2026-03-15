@@ -73,7 +73,7 @@ const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject,
     const [projectToDelete, setProjectToDelete] = React.useState(null);
 
     return (
-        <div className="flex flex-col h-full bg-[#0B0D10] text-white p-6">
+        <div className="flex flex-col h-full bg-[#0B0D10] text-white p-6 overflow-y-auto custom-scrollbar pb-32">
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold flex items-center gap-3">
                     <Folder className="text-[#4F46E5] w-8 h-8" /> Projects
@@ -86,7 +86,7 @@ const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject,
                     <span>ADD PROJECTS</span>
                 </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1 pb-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-1 pb-10">
                 <SortableContext items={projects.map(p => p.id)} strategy={verticalListSortingStrategy}>
                     {projects && projects.map(project => {
                         const taskCount = project.task_count ?? tasks.filter(t => t.projectName === project.name && !t.completed).length;

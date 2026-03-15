@@ -92,7 +92,7 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
         const teams = activeCollection.teams || [];
 
         content = (
-            <div className="flex-1 h-full bg-[#0F1115] overflow-y-auto custom-scrollbar p-8">
+            <div className="flex-1 h-full bg-[#0F1115] overflow-y-auto custom-scrollbar p-4 lg:p-8 pb-32">
                 {/* Back Button and Title */}
                 <div className="flex justify-between items-start mb-12">
                     <div className="flex items-center gap-6">
@@ -223,7 +223,7 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {nestedEvents.length === 0 ? (
                                 <div className="md:col-span-2 p-20 rounded-[3rem] border border-dashed border-white/5 bg-white/[0.01] text-center">
                                     <Box className="mx-auto text-gray-800 mb-4" size={48} />
@@ -273,11 +273,10 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
         );
     } else {
         content = (
-            <div className="flex-1 h-full bg-[#0F1115] overflow-y-auto custom-scrollbar p-8">
+            <div className="flex-1 h-full bg-[#0F1115] overflow-y-auto custom-scrollbar p-4 lg:p-8 pb-32">
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-black text-white tracking-tight italic uppercase">TEAM EVENTS</h1>
-                        <p className="text-gray-500 font-medium mt-1 uppercase text-[10px] tracking-widest leading-loose">Internal Hackathons, Meetups, and Goal Tracking.</p>
                     </div>
                     <button
                         onClick={onAddEvent}
@@ -288,7 +287,7 @@ const EventsView = ({ events = [], onAddEvent, onEventClick, projects = [], user
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {(events || []).filter(e => !e.parentId && !e.won).sort((a, b) => {
                         const dateA = a.date ? new Date(a.date) : new Date(0);
                         const dateB = b.date ? new Date(b.date) : new Date(0);

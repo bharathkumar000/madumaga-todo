@@ -292,7 +292,7 @@ const Column = React.memo(({ id, title, count, color, tasks = [], events = [], p
     const totalCount = tasks.length + events.length;
 
     return (
-        <div className="flex-1 min-w-[280px] max-w-[320px] flex flex-col h-full border-r border-[#1E2025] last:border-r-0 bg-[#0B0D10]">
+        <div className="flex-1 w-full lg:min-w-[280px] lg:max-w-[320px] flex flex-col h-auto lg:h-full mb-6 lg:mb-0 border-b lg:border-b-0 lg:border-r border-[#1E2025] last:border-0 bg-[#0B0D10] shrink-0 overflow-hidden lg:overflow-visible transition-all">
             {/* Column Header */}
             <div className={`p-4 flex items-center justify-between border-t-2 ${color} bg-[#16191D] border-b border-white/[0.03]`}>
                 <div className="flex items-center gap-3">
@@ -308,7 +308,7 @@ const Column = React.memo(({ id, title, count, color, tasks = [], events = [], p
             {/* Column Content */}
             <div
                 ref={setNodeRef}
-                className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4 bg-gradient-to-b from-[#0F1115] to-[#0B0D10]"
+                className="flex-1 p-4 lg:overflow-y-auto lg:custom-scrollbar space-y-4 bg-gradient-to-b from-[#0F1115] to-[#0B0D10]"
             >
                 {/* Events Section */}
                 {events.length > 0 && (
@@ -388,12 +388,12 @@ const TaskBoard = ({ tasks, events = [], projects = [], onToggleTask, onDeleteTa
 
     return (
         <div className="flex flex-col h-full bg-[#0B0D10] text-white">
-            {/* Top Bar / Filter Bar maintained for context */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-800 bg-[#16191D]">
+            {/* Top Bar / Filter Bar */}
+            <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-gray-800 bg-[#16191D] sticky top-0 z-20">
                 <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-1 text-gray-400 text-sm font-medium">
-                        <span className="text-secondary"><Calendar size={16} /></span>
-                        <span className="uppercase">{selectedMember ? `${(selectedMember.name || 'Team member').toUpperCase()}'S Agenda` : 'Agenda'}</span>
+                    <div className="flex items-center gap-1 text-gray-400 text-[10px] lg:text-sm font-medium">
+                        <span className="text-secondary"><Calendar size={14} /></span>
+                        <span className="uppercase tracking-widest">{selectedMember ? `${(selectedMember.name || 'Team member').toUpperCase()}'S Agenda` : 'Agenda'}</span>
                     </div>
                 </div>
                 {selectedMemberId && (
