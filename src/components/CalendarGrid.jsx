@@ -337,8 +337,7 @@ const CalendarGrid = React.memo(({ tasks, onToggleTask, onDeleteTask, events = [
                 // Total available width minus the 80px time column
                 const containerWidth = scrollContainerRef.current.clientWidth;
                 const availableForDays = containerWidth - 80;
-                const divisor = window.innerWidth < 768 ? 1.2 : 3; // Show slightly more than 1 day to hint at horizontal scroll
-                setColumnWidth(availableForDays / divisor);
+                setColumnWidth(availableForDays / 3);
             }
         };
 
