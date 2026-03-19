@@ -57,45 +57,17 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
         <div className="flex h-screen bg-gray-950 text-white overflow-hidden font-sans antialiased">
             {/* Mobile Header */}
             {isMobile && (
-                <div className="lg:hidden bg-[#111217] border-b border-[#2C2E33] fixed top-0 left-0 right-0 z-[60]">
-                    <div className="h-14 flex items-center justify-between px-6 border-b border-white/[0.03]">
-                        <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded bg-white text-black flex items-center justify-center font-bold text-[10px]">✓</div>
-                            <h1 className="text-sm font-bold text-white tracking-tight uppercase">MADUMAGA🔥</h1>
-                        </div>
-                        <button 
-                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="p-1.5 text-gray-400 hover:text-white transition-colors"
-                        >
-                            {isMobileMenuOpen ? <CloseIcon size={20} /> : <Menu size={20} />}
-                        </button>
+                <div className="lg:hidden h-16 bg-[#111217] border-b border-[#2C2E33] flex items-center justify-between px-6 fixed top-0 left-0 right-0 z-[60]">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-white text-black flex items-center justify-center font-bold text-xs">✓</div>
+                        <h1 className="text-lg font-bold text-white tracking-tight">MADUMAGA🔥</h1>
                     </div>
-                    {/* Horizontal Quick Nav for Mobile */}
-                    <div className="h-12 flex items-center justify-around px-2 bg-[#0B0D10]/50 backdrop-blur-md">
-                        {[
-                            { id: 'dashboard', icon: <Home size={18} /> },
-                            { id: 'calendar', icon: <CalendarIcon size={18} /> },
-                            { id: 'tasks', icon: <CheckSquare size={18} /> },
-                            { id: 'projects', icon: <List size={18} /> },
-                            { id: 'events', icon: <Trophy size={18} /> }
-                        ].map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => onNavigate(item.id)}
-                                className="flex-1 flex items-center justify-center h-full"
-                            >
-                                <div className={`relative flex items-center justify-center w-12 h-8 rounded-full transition-all duration-300
-                                    ${currentView === item.id 
-                                        ? 'bg-blue-600/10 text-blue-400' 
-                                        : 'bg-transparent text-gray-600 hover:text-gray-400'}`}>
-                                    {item.icon}
-                                    {currentView === item.id && (
-                                        <div className="absolute bottom-[2px] w-5 h-0.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]"></div>
-                                    )}
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                    <button 
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className="p-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        {isMobileMenuOpen ? <CloseIcon size={24} /> : <Menu size={24} />}
+                    </button>
                 </div>
             )}
 
@@ -110,12 +82,12 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
             {/* Left Sidebar */}
             <aside
                 ref={sidebarRef}
-                className={`bg-[#111217] border-r border-[#2C2E33] flex flex-col transition-all duration-500 z-[80]
-                    ${isMobile ? 'fixed inset-y-0 left-0 shadow-2xl overflow-hidden' : 'relative flex-shrink-0'}
+                className={`bg-[#111217] border-r border-[#2C2E33] flex flex-col relative flex-shrink-0 transition-all duration-300 z-[80]
+                    ${isMobile ? 'fixed inset-y-0 left-0 shadow-2xl overflow-hidden' : 'relative'}
                     ${isMobile && !isMobileMenuOpen ? '-translate-x-full' : 'translate-x-0'}`}
                 style={{ 
-                    width: isMobile ? (isMobileMenuOpen ? '280px' : '0px') : sidebarWidth, 
-                    transition: isResizing ? 'none' : 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease' 
+                    width: isMobile ? '280px' : sidebarWidth, 
+                    transition: isResizing ? 'none' : 'transform 0.3s ease, width 0.2s ease' 
                 }}
             >
                 <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
@@ -163,50 +135,45 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                     {/* Add Event Button - Prominent */}
 
 
-                    {!isMobile && (
-                        <nav className="flex-1 space-y-1.5">
-                            <div className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-3 ml-2">Main Terminal</div>
-                            <NavItem
-                                icon={<Home size={20} />}
-                                label="Dashboard"
-                                active={currentView === 'dashboard'}
-                                onClick={() => { onNavigate('dashboard'); isMobile && setIsMobileMenuOpen(false); }}
-                            />
+                    <nav className="flex-1 space-y-1.5">
+                        <div className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-3 ml-2">Main Terminal</div>
+                        <NavItem
+                            icon={<Home size={20} />}
+                            label="Dashboard"
+                            active={currentView === 'dashboard'}
+                            onClick={() => { onNavigate('dashboard'); isMobile && setIsMobileMenuOpen(false); }}
+                        />
 
-                            <NavItem
-                                icon={<CalendarIcon size={20} />}
-                                label="Calendar"
-                                active={currentView === 'calendar'}
-                                onClick={() => { onNavigate('calendar'); isMobile && setIsMobileMenuOpen(false); }}
-                            />
-                            <NavItem
-                                icon={<CheckSquare size={20} />}
-                                label="Tasks"
-                                active={currentView === 'tasks'}
-                                onClick={() => { onNavigate('tasks'); isMobile && setIsMobileMenuOpen(false); }}
-                            />
-                            <NavItem
-                                icon={<List size={20} />}
-                                label="Projects"
-                                active={currentView === 'projects'}
-                                onClick={() => { onNavigate('projects'); isMobile && setIsMobileMenuOpen(false); }}
-                            />
-                            <NavItem
-                                icon={<Trophy size={20} />}
-                                label="Events"
-                                active={currentView === 'events'}
-                                onClick={() => { onNavigate('events'); isMobile && setIsMobileMenuOpen(false); }}
-                            />
-                            <NavItem
-                                icon={<Award size={20} />}
-                                label="Achievements"
-                                active={currentView === 'achievements'}
-                                onClick={() => { onNavigate('achievements'); isMobile && setIsMobileMenuOpen(false); }}
-                            />
-                        </nav>
-                    )}
-
-                    <nav className="flex-1 space-y-1.5 mt-4">
+                        <NavItem
+                            icon={<CalendarIcon size={20} />}
+                            label="Calendar"
+                            active={currentView === 'calendar'}
+                            onClick={() => { onNavigate('calendar'); isMobile && setIsMobileMenuOpen(false); }}
+                        />
+                        <NavItem
+                            icon={<CheckSquare size={20} />}
+                            label="Tasks"
+                            active={currentView === 'tasks'}
+                            onClick={() => { onNavigate('tasks'); isMobile && setIsMobileMenuOpen(false); }}
+                        />
+                        <NavItem
+                            icon={<List size={20} />}
+                            label="Projects"
+                            active={currentView === 'projects'}
+                            onClick={() => { onNavigate('projects'); isMobile && setIsMobileMenuOpen(false); }}
+                        />
+                        <NavItem
+                            icon={<Trophy size={20} />}
+                            label="Events"
+                            active={currentView === 'events'}
+                            onClick={() => { onNavigate('events'); isMobile && setIsMobileMenuOpen(false); }}
+                        />
+                        <NavItem
+                            icon={<Award size={20} />}
+                            label="Achievements"
+                            active={currentView === 'achievements'}
+                            onClick={() => { onNavigate('achievements'); isMobile && setIsMobileMenuOpen(false); }}
+                        />
 
                         {/* Team Section */}
                         <div className="mt-8 mb-2 px-2">
@@ -285,7 +252,7 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
             </aside >
 
             {/* Main Content Area */}
-            <main className={`flex-1 flex overflow-hidden relative transition-all duration-300 ${isMobile ? 'pt-28' : ''}`}>
+            <main className={`flex-1 flex overflow-hidden relative transition-all duration-300 ${isMobile ? 'pt-16' : ''}`}>
                 {children}
             </main >
         </div >
