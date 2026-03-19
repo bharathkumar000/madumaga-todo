@@ -39,6 +39,15 @@ function App() {
         setTimeout(() => setToast(null), 4000);
     }, []);
 
+    // Check Guest Restriction
+    const checkGuestRestriction = useCallback(() => {
+        if (currentUser?.isGuest) {
+            showToast("RESTRICTION: Guest accounts cannot modify data.", "error");
+            return true;
+        }
+        return false;
+    }, [currentUser?.isGuest, showToast]);
+
     // 1. Auth State Listener
     useEffect(() => {
         if (!supabase?.auth) return;
@@ -46,14 +55,15 @@ function App() {
             if (session) {
                 setIsAuthenticated(true);
                 setCurrentUser(session.user);
-            } else {
+            } else if (!currentUser?.isGuest) {
+                // Only clear if not a guest
                 setIsAuthenticated(false);
                 setCurrentUser(null);
             }
         });
 
         return () => subscription.unsubscribe();
-    }, []);
+    }, [currentUser?.isGuest]);
 
     const mapTask = useCallback((t) => ({
         ...t,
@@ -325,6 +335,7 @@ function App() {
     const [newTaskDefaults, setNewTaskDefaults] = useState(null);
 
     const handleAddTask = async (taskData) => {
+        if (checkGuestRestriction()) return;
         try {
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             if (authError || !user) {
@@ -382,6 +393,7 @@ function App() {
     };
 
     const handleAddProject = async (newProject) => {
+        if (checkGuestRestriction()) return;
         try {
             const { data, error } = await supabase.from('projects').insert([{
                 title: newProject.title,
@@ -400,6 +412,7 @@ function App() {
     };
 
     const handleAddEvent = async (newEvent) => {
+        if (checkGuestRestriction()) return;
         try {
             const user = (await supabase.auth.getUser()).data.user;
             if (!user) throw new Error("User not authenticated");
@@ -508,6 +521,7 @@ function App() {
     };
 
     const handleDeleteEvent = async (eventId) => {
+        if (checkGuestRestriction()) return;
         try {
             // Recursive function to find all nested children IDs
             const getAllDescendantIds = (parentId) => {
@@ -560,6 +574,7 @@ function App() {
     };
 
     const handleUpdateEvent = async (eventId, updates) => {
+        if (checkGuestRestriction()) return;
         try {
             const mappedUpdates = { ...updates };
             if (updates.toDate) mappedUpdates.to_date = updates.toDate;
@@ -598,6 +613,7 @@ function App() {
     };
 
     const handleToggleEventComplete = async (eventId) => {
+        if (checkGuestRestriction()) return;
         try {
             const event = events.find(e => e.id === eventId);
             if (!event) return;
@@ -620,6 +636,7 @@ function App() {
     };
 
     const handleUpdateProfile = async (updatedUser) => {
+        if (checkGuestRestriction()) return;
         try {
             if (!currentUser) return;
 
@@ -663,6 +680,7 @@ function App() {
     };
 
     const handleToggleTask = useCallback(async (taskId) => {
+        if (checkGuestRestriction()) return;
         try {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
@@ -679,6 +697,7 @@ function App() {
     }, [tasks]);
 
     const handleDeleteTask = useCallback(async (taskId) => {
+        if (checkGuestRestriction()) return;
         try {
             // Optimistic Update
             setTasks(prev => prev.filter(t => t.id !== taskId));
@@ -690,6 +709,7 @@ function App() {
         }
     }, []);
     const handleDuplicateTask = useCallback(async (taskId) => {
+        if (checkGuestRestriction()) return;
         try {
             const taskToDuplicate = tasks.find(t => t.id === taskId);
             if (!taskToDuplicate) return;
@@ -718,6 +738,7 @@ function App() {
         }
     }, [tasks, mapTask]);
     const handleUpdateTask = useCallback(async (taskId, updates) => {
+        if (checkGuestRestriction()) return;
         try {
             const mappedUpdates = {};
             if (updates.title !== undefined) mappedUpdates.task_name = updates.title;
@@ -746,6 +767,7 @@ function App() {
     }, []);
 
     const handleDeleteProject = async (projectId) => {
+        if (checkGuestRestriction()) return;
         try {
             // Optimistic update
             setProjects(prev => prev.filter(p => p.id !== projectId));
@@ -781,6 +803,7 @@ function App() {
     };
 
     const handleUpdateProject = useCallback(async (projectId, updates) => {
+        if (checkGuestRestriction()) return;
         try {
             const mappedUpdates = {};
             if (updates.name) mappedUpdates.title = updates.name;
@@ -809,6 +832,7 @@ function App() {
     };
 
     const handleUploadFile = async (projectId, file) => {
+        if (checkGuestRestriction()) return;
         try {
             const sanitizedName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
             const fileName = `${Date.now()}_${sanitizedName}`;
@@ -847,6 +871,7 @@ function App() {
     };
 
     const handleDeleteFile = async (fileId, fileUrl) => {
+        if (checkGuestRestriction()) return;
         try {
             const filePathArr = fileUrl.split('project-files/');
             if (filePathArr.length > 1) {
@@ -862,6 +887,7 @@ function App() {
     };
 
     const handleAddTextAsset = async (projectId, title, content) => {
+        if (checkGuestRestriction()) return;
         try {
             const assetData = {
                 project_id: projectId,
@@ -888,13 +914,14 @@ function App() {
 
     const currentUserProfile = useMemo(() => {
         const profile = allUsers.find(u => u.id === currentUser?.id);
-        if (profile) return profile;
+        if (profile) return { ...profile, isGuest: currentUser?.isGuest || false };
         if (currentUser) {
             return {
                 ...currentUser,
                 name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0],
                 color: 'blue',
-                avatar: currentUser.user_metadata?.avatar_url
+                avatar: currentUser.user_metadata?.avatar_url,
+                isGuest: currentUser?.isGuest || false
             };
         }
         return null;
