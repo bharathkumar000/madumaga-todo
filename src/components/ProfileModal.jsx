@@ -105,7 +105,8 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors uppercase tracking-tight"
+                                disabled={currentUser?.isGuest}
+                                className={`w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors uppercase tracking-tight ${currentUser?.isGuest ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 placeholder="..."
                             />
                         </div>
@@ -117,8 +118,9 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                                 type="text"
                                 value={avatar}
                                 onChange={(e) => setAvatar(e.target.value)}
+                                disabled={currentUser?.isGuest}
                                 maxLength={2}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-center text-xl focus:outline-none focus:border-white/20 transition-colors"
+                                className={`w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-center text-xl focus:outline-none focus:border-white/20 transition-colors ${currentUser?.isGuest ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 placeholder="🔥"
                             />
                         </div>
@@ -161,7 +163,8 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                         <textarea
                             value={bio}
                             onChange={(e) => setBio(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors italic min-h-[80px]"
+                            disabled={currentUser?.isGuest}
+                            className={`w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/20 transition-colors italic min-h-[80px] ${currentUser?.isGuest ? 'opacity-50 cursor-not-allowed' : ''}`}
                             placeholder="..."
                         />
                     </div>
@@ -173,21 +176,29 @@ const ProfileModal = ({ isOpen, onClose, currentUser, onUpdateProfile, users = [
                         >
                             Cancel
                         </button>
-                        <button
-                            onClick={handleSave}
-                            className={`flex-[2] py-3 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl
-                                ${color === 'blue' ? 'bg-blue-600 shadow-blue-500/20' :
-                                    color === 'green' ? 'bg-emerald-600 shadow-emerald-500/20' :
-                                        color === 'rose' ? 'bg-rose-600 shadow-rose-500/20' :
-                                            color === 'pink' ? 'bg-pink-600 shadow-pink-500/20' :
-                                                color === 'teal' ? 'bg-teal-600 shadow-teal-500/20' :
-                                                    color === 'orange' ? 'bg-orange-500 shadow-orange-500/20' :
-                                                        color === 'purple' ? 'bg-purple-600 shadow-purple-500/20' :
-                                                            'bg-amber-500 shadow-amber-500/20'}`}
-                        >
-                            <Save size={16} />
-                            Save Profile
-                        </button>
+                        {!currentUser?.isGuest && (
+                            <button
+                                onClick={handleSave}
+                                className={`flex-[2] py-3 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl
+                                    ${color === 'blue' ? 'bg-blue-600 shadow-blue-500/20' :
+                                        color === 'green' ? 'bg-emerald-600 shadow-emerald-500/20' :
+                                            color === 'rose' ? 'bg-rose-600 shadow-rose-500/20' :
+                                                color === 'pink' ? 'bg-pink-600 shadow-pink-500/20' :
+                                                    color === 'teal' ? 'bg-teal-600 shadow-teal-500/20' :
+                                                        color === 'orange' ? 'bg-orange-500 shadow-orange-500/20' :
+                                                            color === 'purple' ? 'bg-purple-600 shadow-purple-500/20' :
+                                                                'bg-amber-500 shadow-amber-500/20'}`}
+                            >
+                                <Save size={16} />
+                                Save Profile
+                            </button>
+                        )}
+                        {currentUser?.isGuest && (
+                            <div className="flex-[2] py-3 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center justify-center gap-2 opacity-50 cursor-not-allowed">
+                                <Shield size={16} />
+                                Read Only Mode
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

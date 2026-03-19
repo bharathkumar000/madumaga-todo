@@ -466,6 +466,7 @@ const DashboardShell = ({ currentView, tasks, setTasks, onAddTask, projects, set
                                     onDeleteProject(id);
                                     setSelectedProjectId(null);
                                 }}
+                                currentUser={currentUser}
                             />
                         )
                     ) : currentView === 'tasks' ? (

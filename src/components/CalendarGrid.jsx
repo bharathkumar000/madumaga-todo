@@ -26,7 +26,7 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
 
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: `calendar-${task.id}`,
-        disabled: isResizing,
+        disabled: isResizing || currentUser?.isGuest,
         data: { type: 'Task', task }
     });
 
@@ -38,6 +38,7 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
     }, [task.duration, startHour]);
 
     const handleResizeStart = (e, type) => {
+        if (currentUser?.isGuest) return;
         e.stopPropagation();
         e.preventDefault();
         setIsResizing(true);
@@ -249,26 +250,28 @@ const DraggableCalendarTask = React.memo(({ task, startHour, layout, onToggleTas
                         </div>
 
                         {/* Actions Row - Consolidated between Title and Time */}
-                        <div className="flex items-center gap-1 pointer-events-auto">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onEditTask?.(task.id); }}
-                                className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 text-amber-400/40 hover:text-amber-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
-                            >
-                                <Pencil size={12} strokeWidth={3} />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
-                                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all active:scale-90 border ${task.completed ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-emerald-400/40 hover:text-emerald-400 hover:bg-black'}`}
-                            >
-                                <Check size={12} strokeWidth={3} />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
-                                className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 text-rose-400/40 hover:text-rose-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
-                            >
-                                <Trash2 size={12} strokeWidth={3} />
-                            </button>
-                        </div>
+                        {!currentUser?.isGuest && (
+                            <div className="flex items-center gap-1 pointer-events-auto">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onEditTask?.(task.id); }}
+                                    className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 text-amber-400/40 hover:text-amber-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
+                                >
+                                    <Pencil size={12} strokeWidth={3} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
+                                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all active:scale-90 border ${task.completed ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-emerald-400/40 hover:text-emerald-400 hover:bg-black'}`}
+                                >
+                                    <Check size={12} strokeWidth={3} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                                    className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 text-rose-400/40 hover:text-rose-400 hover:bg-black flex items-center justify-center transition-all active:scale-90"
+                                >
+                                    <Trash2 size={12} strokeWidth={3} />
+                                </button>
+                            </div>
+                        )}
 
                         {/* Row 2: Time Range */}
                         <div className="text-sm font-black text-white/90 uppercase tracking-tight leading-none whitespace-nowrap mt-2">

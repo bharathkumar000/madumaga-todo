@@ -8,6 +8,7 @@ import ConfirmationModal from './ConfirmationModal.jsx';
 const ProjectCard = ({ project, onClick, onDelete, taskCount }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: project.id,
+        disabled: currentUser?.isGuest,
         data: { type: 'Project', project }
     });
 
@@ -55,15 +56,17 @@ const ProjectCard = ({ project, onClick, onDelete, taskCount }) => {
                     <span>Active Tasks</span>
                 </div>
 
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(project.id);
-                    }}
-                    className="p-2 rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
-                >
-                    <Trash2 size={16} />
-                </button>
+                {!currentUser?.isGuest && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(project.id);
+                        }}
+                        className="p-2 rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -78,13 +81,15 @@ const ProjectsView = ({ projects, onAddProject, onProjectClick, onDeleteProject,
                 <h2 className="text-2xl font-bold flex items-center gap-3">
                     <Folder className="text-[#4F46E5] w-8 h-8" /> Projects
                 </h2>
-                <button
-                    onClick={onAddProject}
-                    className="py-2.5 px-6 rounded-xl bg-[#4F46E5] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-[#4F46E5]/20 transition-all active:scale-95 group"
-                >
-                    <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
-                    <span>ADD PROJECTS</span>
-                </button>
+                {!currentUser?.isGuest && (
+                    <button
+                        onClick={onAddProject}
+                        className="py-2.5 px-6 rounded-xl bg-[#4F46E5] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-[#4F46E5]/20 transition-all active:scale-95 group"
+                    >
+                        <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+                        <span>ADD PROJECTS</span>
+                    </button>
+                )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1 pb-10">
                 <SortableContext items={projects.map(p => p.id)} strategy={verticalListSortingStrategy}>

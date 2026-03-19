@@ -8,6 +8,7 @@ import { Inbox, Plus, Check, Trash2, Copy, Pencil, Calendar } from 'lucide-react
 const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: `waiting-${task.id}`,
+        disabled: currentUser?.isGuest,
         data: { type: 'Task', task }
     });
 
@@ -138,30 +139,34 @@ const TaskItem = ({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTas
                     </div>
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onEditTask(task.id); }}
-                            className="p-1.5 rounded-lg text-white/40 hover:text-amber-400 hover:bg-black bg-white/5 border border-white/5 transition-all"
-                        >
-                            <Pencil size={12} strokeWidth={2} />
-                        </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onDuplicateTask(task.id); }}
-                            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-black bg-white/5 border border-white/5 transition-all"
-                        >
-                            <Copy size={12} strokeWidth={2} />
-                        </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
-                            className={`p-1.5 rounded-lg transition-all bg-white/5 border border-white/5 ${task.completed ? 'text-green-400 bg-black/40' : 'text-white/40 hover:text-green-400 hover:bg-black'}`}
-                        >
-                            <Check size={12} strokeWidth={2} />
-                        </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
-                            className="p-1.5 rounded-lg text-white/40 hover:text-rose-400 hover:bg-black bg-white/5 border border-white/5 transition-all"
-                        >
-                            <Trash2 size={12} strokeWidth={2} />
-                        </button>
+                        {!currentUser?.isGuest && (
+                            <>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onEditTask(task.id); }}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-amber-400 hover:bg-black bg-white/5 border border-white/5 transition-all"
+                                >
+                                    <Pencil size={12} strokeWidth={2} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onDuplicateTask(task.id); }}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-black bg-white/5 border border-white/5 transition-all"
+                                >
+                                    <Copy size={12} strokeWidth={2} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
+                                    className={`p-1.5 rounded-lg transition-all bg-white/5 border border-white/5 ${task.completed ? 'text-green-400 bg-black/40' : 'text-white/40 hover:text-green-400 hover:bg-black'}`}
+                                >
+                                    <Check size={12} strokeWidth={2} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-rose-400 hover:bg-black bg-white/5 border border-white/5 transition-all"
+                                >
+                                    <Trash2 size={12} strokeWidth={2} />
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -215,15 +220,17 @@ const TaskWaitingList = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask, on
                 )}
             </div>
 
-            <div className="px-2 pt-4">
-                <button
-                    onClick={() => onAddTask({ date: null, status: 'waiting' })}
-                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] text-gray-400 transition-all flex items-center justify-center gap-2 active:scale-95 group shadow-lg"
-                >
-                    <Plus size={14} className="text-cyan-400 group-hover:scale-110 transition-transform" />
-                    Quick Add
-                </button>
-            </div>
+            {!currentUser?.isGuest && (
+                <div className="px-2 pt-4">
+                    <button
+                        onClick={() => onAddTask({ date: null, status: 'waiting' })}
+                        className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] text-gray-400 transition-all flex items-center justify-center gap-2 active:scale-95 group shadow-lg"
+                    >
+                        <Plus size={14} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+                        Quick Add
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

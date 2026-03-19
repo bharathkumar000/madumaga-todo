@@ -10,6 +10,7 @@ import { isSameDay, isBefore, startOfDay, endOfWeek, endOfMonth, isAfter } from 
 const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTask, onEditTask, allUsers = [], currentUser }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: `board-${task.id}`,
+        disabled: currentUser?.isGuest,
         data: { type: 'Task', task }
     });
 
@@ -197,18 +198,22 @@ const BoardTask = React.memo(({ task, onToggleTask, onDeleteTask, onDuplicateTas
 
 
                         <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all scale-90 translate-x-1 group-hover:translate-x-0 duration-300">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
-                                className={`p-1.5 rounded-lg transition-all active:scale-95 border ${task.completed ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-white/5 border-white/5 text-emerald-400/50 hover:text-emerald-400 hover:bg-black'}`}
-                            >
-                                <Check size={13} strokeWidth={3} />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
-                                className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-rose-400/50 hover:text-rose-400 hover:bg-black transition-all active:scale-95"
-                            >
-                                <Trash2 size={13} strokeWidth={3} />
-                            </button>
+                            {!currentUser?.isGuest && (
+                                <>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
+                                        className={`p-1.5 rounded-lg transition-all active:scale-95 border ${task.completed ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-white/5 border-white/5 text-emerald-400/50 hover:text-emerald-400 hover:bg-black'}`}
+                                    >
+                                        <Check size={13} strokeWidth={3} />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
+                                        className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-rose-400/50 hover:text-rose-400 hover:bg-black transition-all active:scale-95"
+                                    >
+                                        <Trash2 size={13} strokeWidth={3} />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

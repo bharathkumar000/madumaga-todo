@@ -2,7 +2,7 @@ import { X, Calendar, MapPin, Info, Bell, ArrowRight, Pencil, Folder, Link as Li
 import { useState } from 'react';
 import ConfirmationModal from './ConfirmationModal.jsx';
 
-const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, onUpdateEvent, projects = [], users = [], allEvents = [], onAddSubEvent, showToast, onGoToProject }) => {
+const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, onUpdateEvent, projects = [], users = [], allEvents = [], onAddSubEvent, showToast, onGoToProject, currentUser }) => {
     if (!event) return null;
 
     const [isAddingMember, setIsAddingMember] = useState(null); // teamId being added to
@@ -126,27 +126,31 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                     </div>
 
                     <div className="absolute top-6 right-6 flex items-center gap-2.5 z-10">
-                        <button
-                            onClick={() => onToggleComplete(event.id)}
-                            className={`p-2.5 rounded-full border border-white/10 text-white transition-all shadow-lg backdrop-blur-md ${event.completed ? 'bg-green-500/40' : 'bg-black/20 hover:bg-black/40'}`}
-                            title={event.completed ? "Mark as Incomplete" : "Mark as Completed"}
-                        >
-                            <Check size={18} />
-                        </button>
-                        <button
-                            onClick={() => onEdit(event)}
-                            className="p-2.5 rounded-full bg-black/20 border border-white/10 text-white hover:bg-black/40 transition-all shadow-lg backdrop-blur-md"
-                            title="Edit Event"
-                        >
-                            <Pencil size={18} />
-                        </button>
-                        <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="p-2.5 rounded-full bg-black/20 border border-white/10 text-white hover:bg-rose-500/40 transition-all shadow-lg backdrop-blur-md"
-                            title="Delete Event"
-                        >
-                            <Trash2 size={18} />
-                        </button>
+                        {!currentUser?.isGuest && (
+                            <>
+                                <button
+                                    onClick={() => onToggleComplete(event.id)}
+                                    className={`p-2.5 rounded-full border border-white/10 text-white transition-all shadow-lg backdrop-blur-md ${event.completed ? 'bg-green-500/40' : 'bg-black/20 hover:bg-black/40'}`}
+                                    title={event.completed ? "Mark as Incomplete" : "Mark as Completed"}
+                                >
+                                    <Check size={18} />
+                                </button>
+                                <button
+                                    onClick={() => onEdit(event)}
+                                    className="p-2.5 rounded-full bg-black/20 border border-white/10 text-white hover:bg-black/40 transition-all shadow-lg backdrop-blur-md"
+                                    title="Edit Event"
+                                >
+                                    <Pencil size={18} />
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    className="p-2.5 rounded-full bg-black/20 border border-white/10 text-white hover:bg-rose-500/40 transition-all shadow-lg backdrop-blur-md"
+                                    title="Delete Event"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </>
+                        )}
                         <button onClick={onClose} className="p-2.5 rounded-full bg-black/20 border border-white/10 text-white hover:bg-black/40 transition-all shadow-lg backdrop-blur-md">
                             <X size={18} />
                         </button>
@@ -240,44 +244,46 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                     <Users size={14} />
                                     <span>Participating Members</span>
                                 </div>
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold text-white uppercase tracking-wider"
-                                    >
-                                        <Plus size={14} /> Add Member
-                                    </button>
+                                {!currentUser?.isGuest && (
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold text-white uppercase tracking-wider"
+                                        >
+                                            <Plus size={14} /> Add Member
+                                        </button>
 
-                                    {isMemberDropdownOpen && (
-                                        <div className="absolute top-full right-0 mt-2 w-56 bg-[#1A1D21] border border-white/10 rounded-2xl shadow-2xl z-[50] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="px-4 py-2 border-b border-white/5 mb-1">
-                                                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Select Team Member</p>
+                                        {isMemberDropdownOpen && (
+                                            <div className="absolute top-full right-0 mt-2 w-56 bg-[#1A1D21] border border-white/10 rounded-2xl shadow-2xl z-[50] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="px-4 py-2 border-b border-white/5 mb-1">
+                                                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Select Team Member</p>
+                                                </div>
+                                                <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
+                                                    {users.filter(u => !teams.some(t => t.name === u.name)).length === 0 ? (
+                                                        <div className="px-4 py-3 text-[10px] text-gray-500 italic">All users added</div>
+                                                    ) : (
+                                                        users.filter(u => !teams.some(t => t.name === u.name)).map(user => (
+                                                            <button
+                                                                key={user.id}
+                                                                onClick={() => handleSelectMember(user)}
+                                                                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors group/u"
+                                                            >
+                                                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-black text-white uppercase">
+                                                                    {user.name.charAt(0)}
+                                                                </div>
+                                                                <div className="flex-1 text-left">
+                                                                    <p className="text-[11px] font-black text-white uppercase tracking-wider group-hover/u:text-indigo-400 transition-colors">{user.name}</p>
+                                                                    <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest leading-none mt-0.5">{user.role || 'Member'}</p>
+                                                                </div>
+                                                                <ArrowRight size={10} className="text-gray-700 group-hover/u:translate-x-0.5 transition-transform" />
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
-                                                {users.filter(u => !teams.some(t => t.name === u.name)).length === 0 ? (
-                                                    <div className="px-4 py-3 text-[10px] text-gray-500 italic">All users added</div>
-                                                ) : (
-                                                    users.filter(u => !teams.some(t => t.name === u.name)).map(user => (
-                                                        <button
-                                                            key={user.id}
-                                                            onClick={() => handleSelectMember(user)}
-                                                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition-colors group/u"
-                                                        >
-                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-black text-white uppercase">
-                                                                {user.name.charAt(0)}
-                                                            </div>
-                                                            <div className="flex-1 text-left">
-                                                                <p className="text-[11px] font-black text-white uppercase tracking-wider group-hover/u:text-indigo-400 transition-colors">{user.name}</p>
-                                                                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest leading-none mt-0.5">{user.role || 'Member'}</p>
-                                                            </div>
-                                                            <ArrowRight size={10} className="text-gray-700 group-hover/u:translate-x-0.5 transition-transform" />
-                                                        </button>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {teams.length === 0 ? (
@@ -290,12 +296,14 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                         <div key={team.id} className="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full bg-[#1A1D21] border border-white/5 hover:border-indigo-500/30 transition-all">
                                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.3)]"></div>
                                             <span className="text-[10px] font-black text-white uppercase tracking-widest pr-1">{team.name}</span>
-                                            <button 
-                                                onClick={() => handleRemoveTeam(team.id)} 
-                                                className="p-1 rounded-full text-gray-600 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
-                                            >
-                                                <X size={10} />
-                                            </button>
+                                            {!currentUser?.isGuest && (
+                                                <button 
+                                                    onClick={() => handleRemoveTeam(team.id)} 
+                                                    className="p-1 rounded-full text-gray-600 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -310,13 +318,15 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                         <Box size={14} />
                                         <span>Collection Contents</span>
                                     </div>
-                                    <button
-                                        onClick={() => onAddSubEvent(event.id)}
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#4F46E5]/10 border border-[#4F46E5]/20 hover:bg-[#4F46E5]/20 transition-all text-[10px] font-bold text-[#4F46E5] uppercase tracking-wider"
-                                    >
-                                        <Plus size={12} />
-                                        Add Sub-Event
-                                    </button>
+                                    {!currentUser?.isGuest && (
+                                        <button
+                                            onClick={() => onAddSubEvent(event.id)}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#4F46E5]/10 border border-[#4F46E5]/20 hover:bg-[#4F46E5]/20 transition-all text-[10px] font-bold text-[#4F46E5] uppercase tracking-wider"
+                                        >
+                                            <Plus size={12} />
+                                            Add Sub-Event
+                                        </button>
+                                    )}
                                 </div>
 
                                 {nestedEvents.length === 0 ? (
@@ -334,20 +344,22 @@ const EventDetailModal = ({ event, onClose, onEdit, onDelete, onToggleComplete, 
                                                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{subEvent.date} • {subEvent.type}</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => onEdit(subEvent)}
-                                                        className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-white transition-colors"
-                                                    >
-                                                        <Pencil size={12} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => onDelete(subEvent.id)}
-                                                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-gray-500 hover:text-rose-500 transition-colors"
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
+                                                {!currentUser?.isGuest && (
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => onEdit(subEvent)}
+                                                            className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-white transition-colors"
+                                                        >
+                                                            <Pencil size={12} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onDelete(subEvent.id)}
+                                                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-gray-500 hover:text-rose-500 transition-colors"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

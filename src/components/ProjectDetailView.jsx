@@ -80,21 +80,25 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                         <div className="w-4 h-[2px] bg-cyan-500 rounded-full"></div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setIsEditingName(!isEditingName)}
-                            className={`p-3 rounded-full border transition-all active:scale-95 ${isEditingName
-                                ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
-                                : 'bg-white/[0.03] border-white/10 text-gray-500 hover:text-white hover:bg-white/[0.08]'
-                                }`}
-                        >
-                            <Edit2 size={18} />
-                        </button>
-                        <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="p-3 rounded-full bg-white/[0.03] border border-white/10 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-95"
-                        >
-                            <Trash2 size={18} />
-                        </button>
+                        {!currentUser?.isGuest && (
+                            <button
+                                onClick={() => setIsEditingName(!isEditingName)}
+                                className={`p-3 rounded-full border transition-all active:scale-95 ${isEditingName
+                                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                                    : 'bg-white/[0.03] border-white/10 text-gray-500 hover:text-white hover:bg-white/[0.08]'
+                                    }`}
+                            >
+                                <Edit2 size={18} />
+                            </button>
+                        )}
+                        {!currentUser?.isGuest && (
+                            <button
+                                onClick={() => setShowDeleteConfirm(true)}
+                                className="p-3 rounded-full bg-white/[0.03] border border-white/10 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-95"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
@@ -335,22 +339,24 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                                     </p>
                                 </div>
 
-                                <div className="flex flex-wrap justify-center gap-3 pt-4">
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="flex items-center gap-3 px-6 py-3 bg-white/[0.03] border border-white/5 rounded-2xl text-sm font-bold text-gray-300 hover:bg-white/[0.08] hover:text-white transition-all"
-                                    >
-                                        <Upload size={18} />
-                                        Upload files
-                                    </button>
-                                    <button
-                                        onClick={() => setShowTextModal(true)}
-                                        className="flex items-center gap-3 px-6 py-3 bg-white/[0.03] border border-white/5 rounded-2xl text-sm font-bold text-gray-300 hover:bg-white/[0.08] hover:text-white transition-all"
-                                    >
-                                        <FileText size={18} />
-                                        Copied text
-                                    </button>
-                                </div>
+                                {!currentUser?.isGuest && (
+                                    <div className="flex flex-wrap justify-center gap-3 pt-4">
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="flex items-center gap-3 px-6 py-3 bg-white/[0.03] border border-white/5 rounded-2xl text-sm font-bold text-gray-300 hover:bg-white/[0.08] hover:text-white transition-all"
+                                        >
+                                            <Upload size={18} />
+                                            Upload files
+                                        </button>
+                                        <button
+                                            onClick={() => setShowTextModal(true)}
+                                            className="flex items-center gap-3 px-6 py-3 bg-white/[0.03] border border-white/5 rounded-2xl text-sm font-bold text-gray-300 hover:bg-white/[0.08] hover:text-white transition-all"
+                                        >
+                                            <FileText size={18} />
+                                            Copied text
+                                        </button>
+                                    </div>
+                                )}
                                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
                             </div>
 
@@ -367,15 +373,17 @@ const ProjectDetailView = ({ project, tasks, onBack, onToggleTask, onDeleteProje
                                             onClick={() => setSelectedFileId(file.id)}
                                         >
                                             {/* Delete Button */}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setFileToDelete(file);
-                                                }}
-                                                className="absolute -top-1 -right-1 p-1 rounded-full bg-rose-500 text-white shadow-lg opacity-0 group-hover:opacity-100 z-30 transition-all hover:scale-110"
-                                            >
-                                                <X size={10} strokeWidth={4} />
-                                            </button>
+                                            {!currentUser?.isGuest && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setFileToDelete(file);
+                                                    }}
+                                                    className="absolute -top-1 -right-1 p-1 rounded-full bg-rose-500 text-white shadow-lg opacity-0 group-hover:opacity-100 z-30 transition-all hover:scale-110"
+                                                >
+                                                    <X size={10} strokeWidth={4} />
+                                                </button>
+                                            )}
 
                                             {/* Dog-ear File Icon / Thumbnail */}
                                             <div 

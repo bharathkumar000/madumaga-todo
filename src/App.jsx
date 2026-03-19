@@ -55,15 +55,18 @@ function App() {
             if (session) {
                 setIsAuthenticated(true);
                 setCurrentUser(session.user);
-            } else if (!currentUser?.isGuest) {
-                // Only clear if not a guest
-                setIsAuthenticated(false);
-                setCurrentUser(null);
+            } else {
+                // If no session, only clear if we are NOT currently a guest
+                setCurrentUser(prev => {
+                    if (prev?.isGuest) return prev;
+                    setIsAuthenticated(false);
+                    return null;
+                });
             }
         });
 
         return () => subscription.unsubscribe();
-    }, [currentUser?.isGuest]);
+    }, []);
 
     const mapTask = useCallback((t) => ({
         ...t,

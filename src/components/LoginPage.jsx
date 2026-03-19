@@ -15,8 +15,17 @@ const LoginPage = ({ onLogin, users }) => {
         setIsLoading(true);
 
         try {
-            // Guest Login Bypass
-            if (userId === '1' && password === '1') {
+            // Guest Login Bypass - Extremely Flexible for ID 1/Password 1
+            const normalizedId = String(userId).trim().toLowerCase();
+            const normalizedPass = String(password).trim().toLowerCase();
+            
+            console.log("Login Check:", { id: normalizedId, pass: normalizedPass });
+
+            const isGuestIdMatch = normalizedId === '1' || normalizedId === 'one' || normalizedId === 'guest';
+            const isGuestPassMatch = normalizedPass === '1' || normalizedPass === 'one' || normalizedPass === 'guest';
+
+            if (isGuestIdMatch && isGuestPassMatch) {
+                console.log("Guest Bypass triggered");
                 const guestUser = {
                     id: 'guest-1',
                     email: 'guest@madumaga.com',
@@ -136,6 +145,27 @@ const LoginPage = ({ onLogin, users }) => {
                                     <LogIn size={18} className="group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
+                        </button>
+
+                        {/* Guest Quick Login Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const guestUser = {
+                                    id: 'guest-1',
+                                    email: 'guest@madumaga.com',
+                                    user_metadata: { 
+                                        full_name: 'Guest Explorer',
+                                        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest'
+                                    },
+                                    isGuest: true
+                                };
+                                onLogin(guestUser);
+                                setIsLoading(false);
+                            }}
+                            className="w-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-semibold py-2 px-4 rounded-xl border border-white/10 transition-all text-xs uppercase tracking-widest"
+                        >
+                            Login as Guest (ID 1, Pass 1)
                         </button>
                     </form>
 

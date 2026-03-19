@@ -153,34 +153,38 @@ const TasksView = React.memo(({ tasks, onToggleTask, onDeleteTask, onDuplicateTa
 
                                     {/* Action buttons area */}
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 scale-90 translate-x-1 group-hover:scale-100 group-hover:translate-x-0 transition-all duration-300">
-                                        {onEditTask && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); onEditTask?.(task.id); }}
-                                                className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-gray-400 hover:text-amber-400 hover:bg-black transition-all active:scale-95"
-                                            >
-                                                <Pencil size={14} />
-                                            </button>
+                                        {!currentUser?.isGuest && (
+                                            <>
+                                                {onEditTask && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onEditTask?.(task.id); }}
+                                                        className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-gray-400 hover:text-amber-400 hover:bg-black transition-all active:scale-95"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                )}
+                                                {onDuplicateTask && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onDuplicateTask?.(task.id); }}
+                                                        className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-gray-400 hover:text-blue-400 hover:bg-black transition-all active:scale-95"
+                                                    >
+                                                        <Copy size={14} />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onToggleTask?.(task.id); }}
+                                                    className={`p-1.5 rounded-lg bg-white/5 border border-white/5 transition-all active:scale-95 ${task.completed ? 'text-emerald-400' : 'text-gray-400 hover:text-emerald-400 hover:bg-black'}`}
+                                                >
+                                                    <Check size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onDeleteTask?.(task.id); }}
+                                                    className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-gray-400 hover:text-red-400 hover:bg-black transition-all active:scale-95"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </>
                                         )}
-                                        {onDuplicateTask && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); onDuplicateTask?.(task.id); }}
-                                                className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-gray-400 hover:text-blue-400 hover:bg-black transition-all active:scale-95"
-                                            >
-                                                <Copy size={14} />
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onToggleTask?.(task.id); }}
-                                            className={`p-1.5 rounded-lg bg-white/5 border border-white/5 transition-all active:scale-95 ${task.completed ? 'text-emerald-400' : 'text-gray-400 hover:text-emerald-400 hover:bg-black'}`}
-                                        >
-                                            <Check size={14} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onDeleteTask?.(task.id); }}
-                                            className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-gray-400 hover:text-red-400 hover:bg-black transition-all active:scale-95"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
                                     </div>
                                 </div>
                             </div>
