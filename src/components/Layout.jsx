@@ -124,7 +124,12 @@ const Layout = ({ children, currentView, onNavigate, onComposeClick, onAddProjec
                                     )}
                                 </div>
                                 <div className="flex flex-col overflow-hidden">
-                                    <span className="text-[14px] font-black text-white truncate uppercase italic tracking-tight">{currentUser.name || currentUser.email?.split('@')[0]}</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[14px] font-black text-white truncate uppercase italic tracking-tight">{currentUser.name || currentUser.email?.split('@')[0]}</span>
+                                        {currentUser.isGuest && (
+                                            <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 font-black tracking-[0.1em]">GUEST</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

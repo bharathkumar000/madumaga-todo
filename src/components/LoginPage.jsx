@@ -15,7 +15,21 @@ const LoginPage = ({ onLogin, users }) => {
         setIsLoading(true);
 
         try {
-            // Removed Guest Login Bypass - Sathwik is now a real account
+            // Guest Login Bypass
+            if (userId === '1' && password === '1') {
+                const guestUser = {
+                    id: 'guest-1',
+                    email: 'guest@madumaga.com',
+                    user_metadata: { 
+                        full_name: 'Guest Explorer',
+                        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest'
+                    },
+                    isGuest: true
+                };
+                onLogin(guestUser);
+                setIsLoading(false);
+                return;
+            }
 
             // Use entered ID directly if it's an email, otherwise map to virtual domain
             const email = userId.includes('@') ? userId : `${userId.toLowerCase()}@madumaga.com`;
